@@ -19,7 +19,7 @@ def main():
     parser.add_argument('--computeUsername', help = 'Provide the user name of the compute node', default = "localadmin")
     parser.add_argument('--computePassword', help = 'Provide the user name of the compute node', default = "cisco123")
     parser.add_argument('--controller', help = 'Provide the Controller node IP Address', required=True)
-    parser.add_argument('--controllerUsername', help = 'Provide the user name of the controller node', default = "localadmin")
+    parser.add_argument('--controllerUsername', help = 'Provide the user name of the controller node', default = "admin")
     parser.add_argument('--controllerPassword', help = 'Provide the user name of the controller node', default = "cisco123")
     args = parser.parse_args()
     
