@@ -19,7 +19,7 @@ class Controller(object):
     '''
     classdocs
     '''
-    def get_neutron_client(self, project_name, username="auto_user", password="cisco123"): #TODO: Remove 
+    def get_neutron_client(self, project_name, username, password): #TODO: Remove 
         '''
         creates a neutron client
         '''
@@ -59,18 +59,18 @@ class Controller(object):
         self.username = username
         self.password = password
         
-    def createProject(self):
+    def createProject(self, tenant_name):
         '''
         '''
         keystone = self.get_keystone_client('admin', 'RegionOne')
 
         # Creating tenant/project
-        new_tenant = keystone.tenants.create(tenant_name="automation-tenant",
+        new_tenant = keystone.tenants.create(tenant_name,
                                              description="Automation tenant",
                                              enabled=True)
         return new_tenant
     
-    def createUser(self, new_tenant):  
+    def createUser(self, new_tenant, new_username, new_password):  
         
         keystone = self.get_keystone_client('admin', 'RegionOne')  
         # Creating new user
@@ -81,10 +81,10 @@ class Controller(object):
                 roleToUse = role
                 break
 
-        new_user = None
+        #new_user = None
         if roleToUse:
-            new_user = keystone.users.create(name='auto_user',
-                                password='cisco123',
+            new_user = keystone.users.create(new_username,
+                                new_password,
                                 tenant_id = new_tenant.id)
             keystone.roles.add_user_role(new_user, roleToUse, new_tenant)
             print "Created user:"
@@ -96,8 +96,8 @@ class Controller(object):
         return new_user
         
         
-    def createNetwork(self, tenant, name):
-        neutron = self.get_neutron_client(tenant)
+    def createNetwork(self, tenant, name, new_username, new_password):
+        neutron = self.get_neutron_client(tenant, new_username, new_password)
         body = {"network": {"name": name,
                    "admin_state_up": "True"}}
         new_network = neutron.create_network(body=body)

@@ -11,31 +11,41 @@ class Ping(BaseTest):
     '''
     classdocs
     '''
+
+    
     def __init__(self, args):
         '''
         Constructor
         '''
+        
         self.args = args
         self.controller = Controller(args.controller, self.args.controllerUsername, self.args.controllerPassword)
 
         self.computeHosts = []
         for compute in args.computeHosts.split(','):
             self.computeHosts.append(Compute(compute, self.args.computeUsername, self.args.computePassword))
+        
+        self.new_tenant = "auto"
+        self.new_user = "auto_user"
+        self.new_password = "cisco123"
+        self.new_network = "auto_nw"
             
             
     # TODO: enforce this
     def runTest(self):
         try:
             print "[debug] I'm overriding my parent runTest"
-            new_tenant = self.controller.createProject()
-            new_user = self.controller.createUser(new_tenant)
+            self.controller.createProject(self.new_tenant)
+            self.controller.createUser(new_tenant = self.new_tenant, 
+                                       new_username = self.new_user, 
+                                       new_password = self.new_password)
             
             #Create network
-            new_network = self.controller.createNetwork(new_tenant,"auto_nw")
+            self.controller.createNetwork(self.new_tenant,self.new_nw, self.new_user, self.new_password)
         
         finally:
             # Cleanup
             print "Deleting user:"
-            #keystone = self.controller.get_keystone_client(new_tenant, 'RegionOne')
-            #keystone.users.delete(new_user)
-            #keystone.tenants.delete(new_tenant)
+            #keystone = self.controller.get_keystone_client("admin", 'RegionOne')
+            #keystone.users.delete(self.new_user)
+            #keystone.tenants.delete(self.new_tenant)
