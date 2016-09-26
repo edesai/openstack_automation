@@ -103,7 +103,11 @@ class Controller(object):
         new_network = neutron.create_network(body=body)
         print "Created network:", new_network
         #print "Network id: ", new_network.get('id'), "Network name: ", new_network.get('name')
-        
+        return new_network
+    
+    def deleteNetwork(self, new_network_id, tenant, new_username, new_password):
+        neutron = self.get_neutron_client(tenant, new_username, new_password)
+        neutron.delete_network(new_network_id)
         # List projects
         #with SSHConnection(address=self.ip, username=self.username, password = self.password) as client:
         #   stdin, stdout, stderr = client.exec_command("uname -a")

@@ -32,18 +32,20 @@ class Ping(BaseTest):
              
     # TODO: enforce this
     def runTest(self):
-        try:
-            new_project = self.controller.createProject(self.new_tenant)
-            new_user = self.controller.createUser(new_project, 
-                                       new_username = self.new_user, 
-                                       new_password = self.new_password)
-            
-            #Create network
-            self.controller.createNetwork(self.new_tenant,self.new_network, 
-                                          self.new_user, self.new_password)
-            #print "new user id:", new_user.id
-        finally:
-            # Cleanup
-            print "Cleanup:"
-            new_user.delete()
-            new_project.delete()
+        
+        new_project = self.controller.createProject(self.new_tenant)
+        new_user = self.controller.createUser(new_project, 
+                                   new_username = self.new_user, 
+                                   new_password = self.new_password)
+        
+        #Create network
+        new_network = self.controller.createNetwork(self.new_tenant,self.new_network, 
+                                      self.new_user, self.new_password)
+        print "new network:", new_network
+    
+        # Cleanup
+        print "Cleanup:"
+        self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
+                                      self.new_user, self.new_password)
+        new_user.delete()
+        new_project.delete()
