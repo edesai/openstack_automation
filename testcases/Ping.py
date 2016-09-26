@@ -29,23 +29,21 @@ class Ping(BaseTest):
         self.new_user = "auto_user"
         self.new_password = "cisco123"
         self.new_network = "auto_nw"
-            
-            
+             
     # TODO: enforce this
     def runTest(self):
         try:
-            print "[debug] I'm overriding my parent runTest"
-            self.controller.createProject(self.new_tenant)
-            self.controller.createUser(new_tenant = self.new_tenant, 
+            new_project = self.controller.createProject(self.new_tenant)
+            new_user = self.controller.createUser(new_project, 
                                        new_username = self.new_user, 
                                        new_password = self.new_password)
             
             #Create network
-            self.controller.createNetwork(self.new_tenant,self.new_nw, self.new_user, self.new_password)
-        
+            self.controller.createNetwork(self.new_tenant,self.new_network, 
+                                          self.new_user, self.new_password)
+            #print "new user id:", new_user.id
         finally:
             # Cleanup
-            print "Deleting user:"
-            #keystone = self.controller.get_keystone_client("admin", 'RegionOne')
-            #keystone.users.delete(self.new_user)
-            #keystone.tenants.delete(self.new_tenant)
+            print "Cleanup:"
+            new_user.delete()
+            new_project.delete()

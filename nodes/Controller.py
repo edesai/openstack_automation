@@ -19,14 +19,14 @@ class Controller(object):
     '''
     classdocs
     '''
-    def get_neutron_client(self, project_name, username, password): #TODO: Remove 
+    def get_neutron_client(self, tenant_name, username, password): #TODO: Remove 
         '''
         creates a neutron client
         '''
         auth = v2.Password(auth_url='http://' + self.ip + ':5000/v2.0',
                                  username=username,
                                  password=password,
-                                 tenant_name="automation-tenant")
+                                 tenant_name=tenant_name)
         sess = session.Session(auth=auth)
         return neutron_client.Client(session=sess)
         
