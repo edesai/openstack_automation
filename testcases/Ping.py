@@ -33,7 +33,11 @@ class Ping(BaseTest):
     # TODO: enforce this
     def runTest(self):
         
+        #Create project
         new_project = self.controller.createProject(self.new_tenant)
+        
+        
+        #Create user
         new_user = self.controller.createUser(new_project, 
                                    new_username = self.new_user, 
                                    new_password = self.new_password)
@@ -41,11 +45,27 @@ class Ping(BaseTest):
         #Create network
         new_network = self.controller.createNetwork(self.new_tenant,self.new_network, 
                                       self.new_user, self.new_password)
-        print "new network:", new_network
+        print "New Network:", new_network
     
+        #Create subnet
+        new_subnet = self.controller.createSubnet(new_network.get('network').get('id'), 
+                                                   self.new_tenant,self.new_user, self.new_password)
+        print "New Subnetwork:", new_subnet
+        
+        #Create instance
+        host1 = self.controller.createInstance(new_project.id, self.new_user, 
+                                               self.new_password, new_network.get('network').get('id'),
+                                               "auto_host1")
+        print "Host1:", host1
+        
+        host2 = self.controller.createInstance(new_project.id, self.new_user, 
+                                               self.new_password, new_network.get('network').get('id'),
+                                               "auto_host2")
+        print "Host2:", host2
+        
         # Cleanup
         print "Cleanup:"
-        self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
-                                      self.new_user, self.new_password)
-        new_user.delete()
-        new_project.delete()
+        #self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
+        #                              self.new_user, self.new_password)
+        #new_user.delete()
+        #new_project.delete()

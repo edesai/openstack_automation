@@ -7,9 +7,11 @@ Created on Sep 22, 2016
 import os_client_config
 from keystoneauth1.identity import v2
 from keystoneauth1 import session
+from keystoneauth1 import loading
 from keystoneclient.v2_0 import client as keystone_client
 import sys
 from neutronclient.v2_0 import client as neutron_client
+from novaclient import client as nova_client
 
 
 
@@ -19,6 +21,15 @@ class Controller(object):
     '''
     classdocs
     '''
+    def get_nova_client(self, tenant_id, username, password):
+        loader = loading.get_plugin_loader('password')
+        auth = loader.load_from_options(auth_url='http://' + self.ip + ':5000/v2.0',
+                                        username=username,
+                                        password=password,
+                                        project_id=tenant_id)
+        sess = session.Session(auth=auth)
+        return nova_client.Client(2, session=sess)
+    
     def get_neutron_client(self, tenant_name, username, password): #TODO: Remove 
         '''
         creates a neutron client
@@ -101,9 +112,18 @@ class Controller(object):
         body = {"network": {"name": name,
                    "admin_state_up": "True"}}
         new_network = neutron.create_network(body=body)
-        print "Created network:", new_network
-        #print "Network id: ", new_network.get('id'), "Network name: ", new_network.get('name')
+        new_network_id = new_network.get('network').get('id')
+        print "Created network:", new_network, "network_id:", new_network_id, "\n"
         return new_network
+    
+     
+    def createSubnet(self, new_network_id,tenant, new_username, new_password): 
+        neutron = self.get_neutron_client(tenant, new_username, new_password)   
+        sub_body = {'subnets': [{'cidr': '51.50.49.0/24',
+                          'ip_version': 4, 'network_id': new_network_id}]}
+        new_subnet = neutron.create_subnet(body=sub_body)
+        print "Created subnet:", new_subnet
+        return new_subnet
     
     def deleteNetwork(self, new_network_id, tenant, new_username, new_password):
         neutron = self.get_neutron_client(tenant, new_username, new_password)
@@ -115,4 +135,18 @@ class Controller(object):
         # Use sshHandle to run create project command
         '''Create client'''
         
-    
+    def createInstance(self, tenant_id, username, password, network_id, hostname):
+        nova = self.get_nova_client(tenant_id, username, password)
+        print nova.servers.list()
+        nics = [{'net-id':network_id}]
+        image = nova.images.find(name="cirros-0.3.4-x86_64-uec")
+        flavor = nova.flavors.find(name="m1.tiny")
+        if image and flavor:
+            instance = nova.servers.create(name=hostname, image=image, 
+                                           flavor=flavor, nics=nics)
+        else:
+            print "Error creating instance"
+            print "image:", image, "flavor:", flavor
+            sys.exit(-1) #TODO: Return specific codes   
+            
+        return instance
