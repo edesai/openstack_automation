@@ -5,6 +5,9 @@ Created on Sep 22, 2016
 '''
 #from common.utils import SSHConnection
 import os_client_config
+#import os
+import os.path
+#import novaclient.v2.client as nova_v2_client
 from keystoneauth1.identity import v2
 from keystoneauth1 import session
 from keystoneauth1 import loading
@@ -119,7 +122,7 @@ class Controller(object):
      
     def createSubnet(self, new_network_id,tenant, new_username, new_password): 
         neutron = self.get_neutron_client(tenant, new_username, new_password)   
-        sub_body = {'subnets': [{'cidr': '51.50.49.0/24',
+        sub_body = {'subnets': [{'cidr': '61.60.59.0/24',
                           'ip_version': 4, 'network_id': new_network_id}]}
         new_subnet = neutron.create_subnet(body=sub_body)
         print "Created subnet:", new_subnet
@@ -135,7 +138,8 @@ class Controller(object):
         # Use sshHandle to run create project command
         '''Create client'''
         
-    def createInstance(self, tenant_id, username, password, network_id, hostname):
+    def createInstance(self, tenant_id, username, password, network_id, 
+                       hostname, key_name):
         nova = self.get_nova_client(tenant_id, username, password)
         print nova.servers.list()
         nics = [{'net-id':network_id}]
@@ -143,10 +147,61 @@ class Controller(object):
         flavor = nova.flavors.find(name="m1.tiny")
         if image and flavor:
             instance = nova.servers.create(name=hostname, image=image, 
-                                           flavor=flavor, nics=nics)
+                                           flavor=flavor, nics=nics, 
+                                           key_name=key_name.name)
+            print "Instance :", instance
         else:
             print "Error creating instance"
             print "image:", image, "flavor:", flavor
             sys.exit(-1) #TODO: Return specific codes   
             
         return instance
+    
+    
+    def deleteInstance(self, tenant_id, username, password, hostname):
+        nova = self.get_nova_client(tenant_id, username, password)
+        servers_list = nova.servers.list()
+        server_del = hostname
+        
+        for s in servers_list:
+            if s.name == server_del:
+                print("This server %s exists" % server_del)
+                nova.servers.delete(s)
+                break
+        
+        return
+    
+    
+    def createKeyPair(self, tenant_id, username, password):
+        with open(os.path.expanduser('~/.ssh/id_rsa.pub')) as f:
+            public_key = f.read()
+          
+        nova = self.get_nova_client(tenant_id, username, password)
+        key = nova.keypairs.create('mykey', public_key)
+        print "Key-pair:", key.name 
+        return key
+    
+    
+    def deleteKeyPair(self, tenant_id, username, password):
+        nova = self.get_nova_client(tenant_id, username, password)
+        nova.keypairs.delete('mykey')
+        return
+        
+    def createSecurityGroup(self, tenant_id, username, password):   
+        nova = self.get_nova_client(tenant_id, username, password)
+        group = nova.security_groups.find(name="default")
+        if not group:
+            group = nova.security_groups.create(name="default")
+        
+        nova.security_group_rules.create(group.id, ip_protocol="icmp",
+                                         cidr="0.0.0.0/0",
+                                         from_port=-1, to_port=-1)
+        nova.security_group_rules.create(group.id, ip_protocol="tcp",
+                                         cidr="0.0.0.0/0",
+                                         from_port=22, to_port=22)   
+        return group
+         
+   
+             
+         
+        
