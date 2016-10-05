@@ -7,6 +7,11 @@ from testcases.BaseTest import BaseTest
 from nodes.Controller import Controller
 from nodes.Compute import Compute
 import time
+import subprocess
+from subprocess import call
+import sys
+from common.utils import SSHConnection
+
 
 
 class Ping(BaseTest):
@@ -21,7 +26,7 @@ class Ping(BaseTest):
         '''
         
         self.args = args
-        self.controller = Controller(args.controller, self.args.controllerUsername, self.args.controllerPassword)
+        self.controller = Controller(args.controller, self.args.controllerUsername, self.args.controllerSysUsername, self.args.controllerPassword)
 
         self.computeHosts = []
         for compute in args.computeHosts.split(','):
@@ -59,30 +64,55 @@ class Ping(BaseTest):
                                                self.new_password)        
         
         #Create security groups and rules
-        sec_group = self.controller.createSecurityGroup(new_project.id, self.new_user, 
+        self.controller.createSecurityGroup(new_project.id, self.new_user, 
                                                self.new_password)
         
         
         #Create instance
         host1 = self.controller.createInstance(new_project.id, self.new_user, 
                                                self.new_password, new_network.get('network').get('id'),
-                                               "auto_host1", key_name=key_pair)
+                                               "autohost1", key_name=key_pair)
         print "Host1:", host1
         
         host2 = self.controller.createInstance(new_project.id, self.new_user, 
                                                self.new_password, new_network.get('network').get('id'),
-                                               "auto_host2", key_name=key_pair)
+                                               "autohost2", key_name=key_pair)
         print "Host2:", host2
 
         
+        with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
+            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network.get('network').get('id')+" ping -c 3 20.20.30.4")
+            output = "".join(stdout.readlines()).strip()
+            error_output = "".join(stderr.readlines()).strip()
+            print "Output:", output
+            print "Error:", error_output
+            
+            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network.get('network').get('id')+" ping -c 3 20.20.30.3")
+            output = "".join(stdout.readlines()).strip()
+            error_output = "".join(stderr.readlines()).strip()
+            print "Output:", output
+            print "Error:", error_output
+            
+            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network.get('network').get('id')+" ping -c 3 20.20.30.2")
+            output = "".join(stdout.readlines()).strip()
+            error_output = "".join(stderr.readlines()).strip()
+            print "Output:", output
+            print "Error:", error_output
+
+        #call(["sudo","ip","netns","exec","qdhcp-"+new_network.get('network').get('id'), "ping", ])
         
+
+        '''    
         # Cleanup
         print "Cleanup:"
-        self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "auto_host1")
-        self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "auto_host2")
+        self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+        self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
         self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
         time.sleep(5)
         self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
                                       self.new_user, self.new_password)
         new_user.delete()
         new_project.delete()
+        '''
+        print "Done"
+        

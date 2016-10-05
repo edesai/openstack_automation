@@ -3,11 +3,9 @@ Created on Sep 22, 2016
 
 @author: edesai
 '''
-#from common.utils import SSHConnection
+
 import os_client_config
-#import os
 import os.path
-#import novaclient.v2.client as nova_v2_client
 from keystoneauth1.identity import v2
 from keystoneauth1 import session
 from keystoneauth1 import loading
@@ -15,6 +13,7 @@ from keystoneclient.v2_0 import client as keystone_client
 import sys
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
+import time
 
 
 
@@ -65,12 +64,13 @@ class Controller(object):
             project_name=project_name,
             region_name=region_name)
  
-    def __init__(self, ip, username, password):
+    def __init__(self, ip, username, sys_username, password):
         '''
         Constructor
         '''
         self.ip = ip
         self.username = username
+        self.sys_username = sys_username
         self.password = password
         
     def createProject(self, tenant_name):
@@ -101,8 +101,7 @@ class Controller(object):
                                 new_password,
                                 tenant_id = new_tenant.id)
             keystone.roles.add_user_role(new_user, roleToUse, new_tenant)
-            print "Created user:"
-            print new_user
+            print "Created user:", new_user
         else:
             print "Role not found !!"
             sys.exit(-1) #TODO: Return specific codes
@@ -120,9 +119,9 @@ class Controller(object):
         return new_network
     
      
-    def createSubnet(self, new_network_id,tenant, new_username, new_password): 
+    def createSubnet(self, new_network_id, tenant, new_username, new_password): 
         neutron = self.get_neutron_client(tenant, new_username, new_password)   
-        sub_body = {'subnets': [{'cidr': '61.60.59.0/24',
+        sub_body = {'subnets': [{'cidr': '20.20.30.0/24',
                           'ip_version': 4, 'network_id': new_network_id}]}
         new_subnet = neutron.create_subnet(body=sub_body)
         print "Created subnet:", new_subnet
@@ -131,12 +130,10 @@ class Controller(object):
     def deleteNetwork(self, new_network_id, tenant, new_username, new_password):
         neutron = self.get_neutron_client(tenant, new_username, new_password)
         neutron.delete_network(new_network_id)
-        # List projects
-        #with SSHConnection(address=self.ip, username=self.username, password = self.password) as client:
-        #   stdin, stdout, stderr = client.exec_command("uname -a")
-        #    print "uname: " + stdout
-        # Use sshHandle to run create project command
-        '''Create client'''
+
+
+
+    '''Create client'''
         
     def createInstance(self, tenant_id, username, password, network_id, 
                        hostname, key_name):
@@ -149,7 +146,12 @@ class Controller(object):
             instance = nova.servers.create(name=hostname, image=image, 
                                            flavor=flavor, nics=nics, 
                                            key_name=key_name.name)
+            print "Waiting for Instance to boot up..."
+            time.sleep(100)
+
             print "Instance :", instance
+            print "Instance:Networks :", instance.networks
+            
         else:
             print "Error creating instance"
             print "image:", image, "flavor:", flavor
@@ -165,7 +167,7 @@ class Controller(object):
         
         for s in servers_list:
             if s.name == server_del:
-                print("This server %s exists" % server_del)
+                print("This server %s exists, so delete" % server_del)
                 nova.servers.delete(s)
                 break
         
@@ -178,7 +180,7 @@ class Controller(object):
           
         nova = self.get_nova_client(tenant_id, username, password)
         key = nova.keypairs.create('mykey', public_key)
-        print "Key-pair:", key.name 
+         
         return key
     
     
