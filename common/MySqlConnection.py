@@ -35,17 +35,39 @@ class MySqlConnection(object):
         
         # fetch all of the rows from the query
         data = cursor.fetchall ()
-        '''
-        # print the rows
+        
+        result = 0
         for row in data :
             if(row[1] == instance_name):
-                print "Instance name:", row[1], ", Instance IP:", row[6], ", vdp_vlan:", row[11]
-        '''
+                result = row
+                break
         
         # close the cursor object
         cursor.close ()
         
-        #print "Data after closing connection:", data
-        return data
-
+        #print "Data after closing connection:", data         
+        return result
+    
+    def get_agent_info(self, connection, host_name):
+        # prepare a cursor object using cursor() method
+        cursor = connection.cursor ()
+        
+        # execute the SQL query using execute() method.
+        cursor.execute("select * from agents")
+        
+        # fetch all of the rows from the query
+        data = cursor.fetchall ()
+        
+        print "In get_agent_info_method, printing data:", data
+        result = 0
+        for row in data :
+            if(row[0] == host_name):
+                result = row
+                break
+        
+        # close the cursor object
+        cursor.close ()
+        
+        #print "Data after closing connection:", data         
+        return result
     

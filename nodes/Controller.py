@@ -15,10 +15,6 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 import time
 
-
-
-
-
 class Controller(object):
     '''
     classdocs

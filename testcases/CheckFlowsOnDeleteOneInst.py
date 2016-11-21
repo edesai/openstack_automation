@@ -1,23 +1,20 @@
 '''
-Created on Oct 25, 2016
+Created on Nov 18, 2016
 
 @author: edesai
 '''
-from testcases.BaseTest import BaseTest
 from nodes.Controller import Controller
 from nodes.Compute import Compute
 import time
-import sys
 from common.utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
-import subprocess
 import re
 
-
-class CheckFlowsOnDelete(object):
+class CheckFlowsOnDeleteOneInst(object):
     '''
     classdocs
     '''
+
     def __init__(self, args):
         '''
         Constructor
@@ -71,7 +68,11 @@ class CheckFlowsOnDelete(object):
                                                "autohost1", key_name=key_pair)
         print "Host1:", host1
         
-
+        host2 = self.controller.createInstance(new_project.id, self.new_user, 
+                                               self.new_password, new_network.get('network').get('id'),
+                                               "autohost2", key_name=key_pair)
+        print "Host2:", host2
+        
         print "Connecting to database"
         #Connect to database
         mysql_db = MySqlConnection(self.args)
@@ -149,10 +150,12 @@ class CheckFlowsOnDelete(object):
                 return 1 #TODO: Return correct retval
             
         self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-        print "Deleting Instance autohost1..."
+        print "Deleting only 1 Instance - autohost1..."
         self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
         time.sleep(40)
-        '''max_retries = 4
+        
+        '''
+        max_retries = 4
         for i in range(max_retries):
             try:
                 time.sleep (5)
@@ -161,8 +164,8 @@ class CheckFlowsOnDelete(object):
                 print "Created Exception: Timeout Error ", e
                 print "Cleanup: "
                 self.cleanup(new_network, new_user, new_project)
-                return 1 #TODO: Return correct retval'''
-            
+                return 1 #TODO: Return correct retval
+        '''    
         with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
             stdin, stdout, stderr = client.exec_command("sudo ovs-ofctl dump-flows br-ethd")
             
@@ -181,10 +184,7 @@ class CheckFlowsOnDelete(object):
                 if x:
                     if long(x.group(0)) == vdpVlan:
                         print "VDP VLAN found:", vdpVlan
-                        print "Flows not deleted from br-ethd...Failing the test case..."
-                        print "Cleanup: "
-                        self.cleanup(new_network, new_user, new_project)
-                        return 1 #TODO: Return correct retval
+                        print "Flows not deleted from br-ethd"
                         break
             stdin, stdout, stderr = client.exec_command("sudo ovs-ofctl dump-flows br-int")
             
@@ -203,10 +203,7 @@ class CheckFlowsOnDelete(object):
                 if x:
                     if long(x.group(0)) == vdpVlan:
                         print "VDP VLAN found:", vdpVlan
-                        print "Flows not deleted from br-int...Failing the test case..."
-                        print "Cleanup: "
-                        self.cleanup(new_network, new_user, new_project)
-                        return 1 #TODO: Return correct retval
+                        print "Flows not deleted from br-int"
                         break
         print "Cleanup: "
         self.cleanup(new_network, new_user, new_project)
@@ -220,5 +217,4 @@ class CheckFlowsOnDelete(object):
         new_project.delete()
         return 0
          
-        
         
