@@ -19,6 +19,15 @@ class Controller(object):
     '''
     classdocs
     '''
+    def __init__(self, ip, username, sys_username, password):
+        '''
+        Constructor
+        '''
+        self.ip = ip
+        self.username = username
+        self.sys_username = sys_username
+        self.password = password
+        
     def get_nova_client(self, tenant_id, username, password):
         loader = loading.get_plugin_loader('password')
         auth = loader.load_from_options(auth_url='http://' + self.ip + ':5000/v2.0',
@@ -60,15 +69,7 @@ class Controller(object):
             project_name=project_name,
             region_name=region_name)
  
-    def __init__(self, ip, username, sys_username, password):
-        '''
-        Constructor
-        '''
-        self.ip = ip
-        self.username = username
-        self.sys_username = sys_username
-        self.password = password
-        
+
     def createProject(self, tenant_name):
         '''
         '''
@@ -115,9 +116,9 @@ class Controller(object):
         return new_network
     
      
-    def createSubnet(self, new_network_id, tenant, new_username, new_password): 
+    def createSubnet(self, new_network_id, tenant, new_username, new_password, subnet_range): 
         neutron = self.get_neutron_client(tenant, new_username, new_password)   
-        sub_body = {'subnets': [{'cidr': '20.20.30.0/24',
+        sub_body = {'subnets': [{'cidr': subnet_range,
                           'ip_version': 4, 'network_id': new_network_id}]}
         new_subnet = neutron.create_subnet(body=sub_body)
         print "Created subnet:", new_subnet
@@ -166,7 +167,8 @@ class Controller(object):
                 print("This server %s exists, so delete" % server_del)
                 nova.servers.delete(s)
                 break
-        
+            
+        time.sleep(40)
         return
     
     

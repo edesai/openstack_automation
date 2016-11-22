@@ -32,6 +32,7 @@ class VlanTranslation(object):
         self.new_user = "auto_user"
         self.new_password = "cisco123"
         self.new_network = "auto_nw"
+        self.new_subnw = "20.20.30.0/24"
         
     # TODO: enforce this
     def runTest(self):  
@@ -52,7 +53,8 @@ class VlanTranslation(object):
     
         #Create subnet
         new_subnet = self.controller.createSubnet(new_network.get('network').get('id'), 
-                                                   self.new_tenant,self.new_user, self.new_password)
+                                                   self.new_tenant,self.new_user, self.new_password,
+                                                   self.new_subnw)
         print "New Subnetwork:", new_subnet
 
         #Create key-pair

@@ -33,6 +33,7 @@ class CheckFlowsOnDelete(object):
         self.new_user = "auto_user"
         self.new_password = "cisco123"
         self.new_network = "auto_nw"
+        self.new_subnw = "20.20.30.0/24"
         
     # TODO: enforce this
     def runTest(self):  
@@ -53,7 +54,8 @@ class CheckFlowsOnDelete(object):
     
         #Create subnet
         new_subnet = self.controller.createSubnet(new_network.get('network').get('id'), 
-                                                   self.new_tenant,self.new_user, self.new_password)
+                                                   self.new_tenant,self.new_user, self.new_password,
+                                                   self.new_subnw)
         print "New Subnetwork:", new_subnet
 
         #Create key-pair
@@ -151,7 +153,7 @@ class CheckFlowsOnDelete(object):
         self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
         print "Deleting Instance autohost1..."
         self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
-        time.sleep(40)
+        
         '''max_retries = 4
         for i in range(max_retries):
             try:

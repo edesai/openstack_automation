@@ -6,10 +6,10 @@ Created on Nov 21, 2016
 
 from nodes.Controller import Controller
 from nodes.Compute import Compute
-import time
 from common.utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
-import json
+from common.Uplink import Uplink, UplinkInfo
+
 
 
 class VdpAssoc(object):
@@ -31,6 +31,7 @@ class VdpAssoc(object):
         self.new_user = "auto_user"
         self.new_password = "cisco123"
         self.new_network = "auto_nw"
+        self.new_subnw = "20.20.30.0/24"
         
     # TODO: enforce this
     def runTest(self):  
@@ -51,7 +52,8 @@ class VdpAssoc(object):
     
         #Create subnet
         new_subnet = self.controller.createSubnet(new_network.get('network').get('id'), 
-                                                   self.new_tenant,self.new_user, self.new_password)
+                                                   self.new_tenant,self.new_user, self.new_password,
+                                                   self.new_subnw)
         print "New Subnetwork:", new_subnet
 
         #Create key-pair
@@ -86,36 +88,52 @@ class VdpAssoc(object):
                 self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
                 self.cleanup(new_network, new_user, new_project)
                 return 1 #TODO: Return correct retval 
+        
+        print "Check for looping...hostname:", host_name    
+        try:
+            uplinkInst = Uplink(self.args)
             
-            try:
-                data = mysql_db.get_agent_info(mysql_connection, host_name)
-                print "Agent info is:", data[3]
-                info = json.loads(data[3])
-                print "Uplink:",info["uplink"]
-                remote_switch_ip = info["topo"]["LLDPLeth3"]["remote_mgmt_addr"]
-                print "Remote Switch Ip:", remote_switch_ip
-                with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
-                    stdin, stdout, stderr = client.exec_command("sudo vdptool -t -i LLDPLeth3 -V assoc -c mode=assoc")
-                    output = "".join(stdout.readlines())
-                    print "VDPTOOL command output:", output
-                    error_output = "".join(stderr.readlines()).strip()
-                    if error_output:
-                        print "Error:", error_output     
-                        print "Cleanup: "
-                        self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-                        self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
-                        self.cleanup(new_network, new_user, new_project)
-                        return 1 #TODO: Return correct retval
-                        
-                        
-            except Exception as e:
-                print "Created Exception: ",e
-                print "Cleanup: "
-                self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
-                self.cleanup(new_network, new_user, new_project)
-                return 1 #TODO: Return correct retval    
+            uplink_info = UplinkInfo()
+            uplink_info = Uplink.get_info(uplinkInst, host_name)
+            print "uplink veth:", uplink_info.vethInterface
+            print "remote_port",  uplink_info.remotePort
+            with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
+                stdin, stdout, stderr = client.exec_command("sudo vdptool -t -i "+uplink_info.vethInterface+" -V assoc -c mode=assoc")
+                output = "".join(stdout.readlines())
+                print "VDPTOOL command output:", output
+                error_output = "".join(stderr.readlines()).strip()
+                if error_output:
+                    print "Error:", error_output     
+                    print "Cleanup: "
+                    self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+                    self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+                    self.cleanup(new_network, new_user, new_project)
+                    return 1 #TODO: Return correct retval
                 
+                
+                inst_str =  str((host1.networks["auto_nw"])[0])
+                if inst_str in output:
+                    print "Instance found in vdptool cmd output.\n"
+                else:
+                    print "Error:Instance not found in vdptool cmd output.\n", error_output     
+                    print "Cleanup: "
+                    self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+                    self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+                    self.cleanup(new_network, new_user, new_project)
+                    return 1 #TODO: Return correct retval       
+        except Exception as e:
+            print "Created Exception: ",e
+            print "Cleanup: "
+            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+            self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+            self.cleanup(new_network, new_user, new_project)
+            return 1 #TODO: Return correct retval    
+        
+        print "Cleanup: "
+        self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+        self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+        self.cleanup(new_network, new_user, new_project)
+        print "Done"   
         return 0 
     
     def cleanup(self, new_network, new_user, new_project):                
