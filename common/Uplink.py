@@ -19,17 +19,17 @@ class Uplink(object):
     '''
     classdocs
     '''
-    def __init__(self, args):
+    def __init__(self, config_dict):
         '''
         Constructor
         '''
-        self.args = args
+        self.config_dict = config_dict
         
     def get_info(self, host_name): 
         print "Connecting to database"
         #Connect to database
-        mysql_db = MySqlConnection(self.args)
-        with MySqlConnection(self.args) as mysql_connection:
+        mysql_db = MySqlConnection(self.config_dict)
+        with MySqlConnection(self.config_dict) as mysql_connection:
             try:
                 data = mysql_db.get_agent_info(mysql_connection, host_name)
                 print "Agent info is:", data[3]

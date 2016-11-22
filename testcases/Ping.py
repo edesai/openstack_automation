@@ -18,17 +18,17 @@ class Ping(BaseTest):
     classdocs
     '''
 
-    def __init__(self, args):
+    def __init__(self, config_dict):
         '''
         Constructor
         '''
         
-        self.args = args
-        self.controller = Controller(args.controller, self.args.controllerUsername, self.args.controllerSysUsername, self.args.controllerPassword)
+        self.controller = Controller(config_dict['controller']['address'], config_dict['controller']['username'],
+                                    config_dict['controller']['password'], config_dict['controller']['sys_username'])
 
         self.computeHosts = []
-        for compute in args.computeHosts.split(','):
-            self.computeHosts.append(Compute(compute, self.args.computeUsername, self.args.computePassword))
+        for compute in config_dict['computes']:
+            self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
         self.new_tenant = "auto"
         self.new_user = "auto_user"

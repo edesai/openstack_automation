@@ -1,0 +1,36 @@
+testbed:
+    name: testbed01
+    dcnm:
+        ##############################################################
+        # DCNM properties
+        ##############################################################
+        address: 172.28.11.151
+        username: admin
+        password: cisco123
+        sys_username: root
+        sys_password: cisco123
+
+tests:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+
+controller:
+    address: 172.28.10.110
+    username: admin
+    password: cisco123
+    sys_username: localadmin
+    db:
+      username: root
+      password: cisco123
+
+computes:
+    - address: 172.28.10.110
+      username: localadmin
+      password: cisco123
+    - address: 172.28.10.115
+      username: localadmin
+      password: cisco123
+    

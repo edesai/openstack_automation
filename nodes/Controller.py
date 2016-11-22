@@ -19,7 +19,7 @@ class Controller(object):
     '''
     classdocs
     '''
-    def __init__(self, ip, username, sys_username, password):
+    def __init__(self, ip, username, password, sys_username):
         '''
         Constructor
         '''
@@ -73,7 +73,7 @@ class Controller(object):
     def createProject(self, tenant_name):
         '''
         '''
-        keystone = self.get_keystone_client('admin', 'RegionOne')
+        keystone = self.get_keystone_client(self.username, 'RegionOne')
 
         # Creating tenant/project
         new_tenant = keystone.tenants.create(tenant_name,
@@ -83,7 +83,7 @@ class Controller(object):
     
     def createUser(self, new_tenant, new_username, new_password):  
         
-        keystone = self.get_keystone_client('admin', 'RegionOne')  
+        keystone = self.get_keystone_client(self.username, 'RegionOne')  
         # Creating new user
         roleToUse = None
         for role in keystone.roles.list():

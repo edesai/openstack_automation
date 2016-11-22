@@ -16,16 +16,17 @@ class VdpAssoc(object):
     '''
     classdocs
     '''
-    def __init__(self, args):
+    def __init__(self, config_dict):
         '''
         Constructor
         '''
-        self.args = args
-        self.controller = Controller(args.controller, self.args.controllerUsername, self.args.controllerSysUsername, self.args.controllerPassword)
+        self.config_dict = config_dict
+        self.controller = Controller(config_dict['controller']['address'], config_dict['controller']['username'],
+                                    config_dict['controller']['password'], config_dict['controller']['sys_username'])
 
         self.computeHosts = []
-        for compute in args.computeHosts.split(','):
-            self.computeHosts.append(Compute(compute, self.args.computeUsername, self.args.computePassword))
+        for compute in config_dict['computes']:
+            self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
         self.new_tenant = "auto"
         self.new_user = "auto_user"
@@ -74,9 +75,9 @@ class VdpAssoc(object):
 
         print "Connecting to database"
         #Connect to database
-        mysql_db = MySqlConnection(self.args)
+        mysql_db = MySqlConnection(self.config_dict)
         
-        with MySqlConnection(self.args) as mysql_connection:
+        with MySqlConnection(self.config_dict) as mysql_connection:
             try:
                 data = mysql_db.get_instances(mysql_connection, "autohost1")
                 print "Host name is:", data[10]
@@ -91,7 +92,7 @@ class VdpAssoc(object):
         
         print "Check for looping...hostname:", host_name    
         try:
-            uplinkInst = Uplink(self.args)
+            uplinkInst = Uplink(self.config_dict)
             
             uplink_info = UplinkInfo()
             uplink_info = Uplink.get_info(uplinkInst, host_name)

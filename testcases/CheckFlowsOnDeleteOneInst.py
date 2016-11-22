@@ -15,16 +15,17 @@ class CheckFlowsOnDeleteOneInst(object):
     classdocs
     '''
 
-    def __init__(self, args):
+    def __init__(self, config_dict):
         '''
         Constructor
         '''
-        self.args = args
-        self.controller = Controller(args.controller, self.args.controllerUsername, self.args.controllerSysUsername, self.args.controllerPassword)
+        self.config_dict = config_dict
+        self.controller = Controller(config_dict['controller']['address'], config_dict['controller']['username'],
+                                    config_dict['controller']['password'], config_dict['controller']['sys_username'])
 
         self.computeHosts = []
-        for compute in args.computeHosts.split(','):
-            self.computeHosts.append(Compute(compute, self.args.computeUsername, self.args.computePassword))
+        for compute in config_dict['computes']:
+            self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
         self.new_tenant = "auto"
         self.new_user = "auto_user"
@@ -77,9 +78,9 @@ class CheckFlowsOnDeleteOneInst(object):
         
         print "Connecting to database"
         #Connect to database
-        mysql_db = MySqlConnection(self.args)
+        mysql_db = MySqlConnection(self.config_dict)
         
-        with MySqlConnection(self.args) as mysql_connection:
+        with MySqlConnection(self.config_dict) as mysql_connection:
             try:
                 data = mysql_db.get_instances(mysql_connection, "autohost1")
                 print "Instance name:", data[1], ", Instance IP:", data[6], ", vdp_vlan:", data[11] 
@@ -89,6 +90,7 @@ class CheckFlowsOnDeleteOneInst(object):
                 print "Cleanup: "
                 self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
                 self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
                 self.cleanup(new_network, new_user, new_project)
                 return 1 #TODO: Return correct retval
                 
@@ -102,6 +104,7 @@ class CheckFlowsOnDeleteOneInst(object):
                 print "Cleanup: "
                 self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
                 self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
                 self.cleanup(new_network, new_user, new_project)    
                 return 1 #TODO: Return correct retval
             print "Output:", output
@@ -119,6 +122,7 @@ class CheckFlowsOnDeleteOneInst(object):
                 print "Cleanup: "
                 self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
                 self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
                 self.cleanup(new_network, new_user, new_project)
                 return 1 #TODO: Return correct retval 
             stdin, stdout, stderr = client.exec_command("sudo ovs-ofctl dump-flows br-int")
@@ -130,6 +134,7 @@ class CheckFlowsOnDeleteOneInst(object):
                 print "Cleanup: "
                 self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
                 self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
                 self.cleanup(new_network, new_user, new_project)   
                 return 1 #TODO: Return correct retval
             
@@ -148,6 +153,7 @@ class CheckFlowsOnDeleteOneInst(object):
                 print "Cleanup: "
                 self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
                 self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
                 self.cleanup(new_network, new_user, new_project)   
                 return 1 #TODO: Return correct retval
             
@@ -176,6 +182,7 @@ class CheckFlowsOnDeleteOneInst(object):
             if error_output:
                 print "Error:", error_output  
                 print "Cleanup: "
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
                 self.cleanup(new_network, new_user, new_project)   
                 return 1 #TODO: Return correct retval
             print "Output:", output
@@ -195,6 +202,7 @@ class CheckFlowsOnDeleteOneInst(object):
             if error_output:
                 print "Error:", error_output     
                 print "Cleanup: "
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
                 self.cleanup(new_network, new_user, new_project)
                 return 1 #TODO: Return correct retval
             print "Output:", output
@@ -212,7 +220,8 @@ class CheckFlowsOnDeleteOneInst(object):
         print "Done"
         return 0
                 
-    def cleanup(self, new_network, new_user, new_project):                
+    def cleanup(self, new_network, new_user, new_project):
+        self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")                
         self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
                                       self.new_user, self.new_password)
         new_user.delete()

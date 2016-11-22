@@ -9,14 +9,13 @@ class MySqlConnection(object):
     '''
     classdocs
     '''
-    def __init__(self, args):
+    def __init__(self, config_dict):
         '''
         Constructor
         '''
-        self.args = args
-        self.host = self.args.controller
-        self.user = self.args.dbUsername
-        self.password = self.args.dbPassword
+        self.host = config_dict['controller']['address']
+        self.user = config_dict['controller']['db']['username']
+        self.password = config_dict['controller']['db']['password']
         self.dbName = "cisco_dfa"
         
     def __enter__(self):
