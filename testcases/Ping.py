@@ -38,82 +38,156 @@ class Ping(BaseTest):
              
     # TODO: enforce this
     def runTest(self):
+        try:
+            #Create project
+            new_project = self.controller.createProject(self.new_tenant)
+        except Exception as e:
+            print "Error:", e 
+            return 1
+          
+        try:    
+            #Create user
+            new_user = self.controller.createUser(new_project, 
+                                       new_username = self.new_user, 
+                                       new_password = self.new_password)
+        except Exception as e:
+            print "Error:", e
+            new_project.delete()
+            return 1
         
-        #Create project
-        new_project = self.controller.createProject(self.new_tenant)
+        try:    
+            #Create network
+            new_network = self.controller.createNetwork(self.new_tenant,self.new_network, 
+                                          self.new_user, self.new_password)
+            print "New Network:", new_network   
+        except Exception as e:
+            print "Error:", e
+            new_user.delete()
+            new_project.delete() 
+            return 1
+           
+        try:
+            #Create subnet
+            new_subnet = self.controller.createSubnet(new_network.get('network').get('id'), 
+                                                       self.new_tenant,self.new_user, self.new_password,
+                                                       "20.20.30.0/24")
+            print "New Subnetwork:", new_subnet
+        except Exception as e:
+            print "Error:", e                
+            self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
+                                          self.new_user, self.new_password)
+            new_user.delete()
+            new_project.delete()
+            return 1
+          
+        try:
+            #Create key-pair
+            key_pair = self.controller.createKeyPair(new_project.id, self.new_user, 
+                                                   self.new_password)
+        except Exception as e:
+            print "Error:", e                
+            self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
+                                          self.new_user, self.new_password)
+            new_user.delete()
+            new_project.delete()
+            return 1             
         
+        try:    
+            #Create security groups and rules
+            self.controller.createSecurityGroup(new_project.id, self.new_user, 
+                                                   self.new_password)
+        except Exception as e:
+            print "Error:", e
+            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+            time.sleep(5)                
+            self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
+                                          self.new_user, self.new_password)
+            new_user.delete()
+            new_project.delete()
+            return 1    
         
-        #Create user
-        new_user = self.controller.createUser(new_project, 
-                                   new_username = self.new_user, 
-                                   new_password = self.new_password)
+        try:
+            #Create instance
+            host1 = self.controller.createInstance(new_project.id, self.new_user, 
+                                                   self.new_password, new_network.get('network').get('id'),
+                                                   "autohost1", key_name=key_pair)
+            print "Host1:", host1
+        except Exception as e:
+            print "Error:", e
+            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+            time.sleep(5)                
+            self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
+                                          self.new_user, self.new_password)
+            new_user.delete()
+            new_project.delete()
+            return 1
         
-        #Create network
-        new_network = self.controller.createNetwork(self.new_tenant,self.new_network, 
-                                      self.new_user, self.new_password)
-        print "New Network:", new_network
-    
-        #Create subnet
-        new_subnet = self.controller.createSubnet(new_network.get('network').get('id'), 
-                                                   self.new_tenant,self.new_user, self.new_password,
-                                                   "20.20.30.0/24")
-        print "New Subnetwork:", new_subnet
-
-        #Create key-pair
-        key_pair = self.controller.createKeyPair(new_project.id, self.new_user, 
-                                               self.new_password)        
-        
-        #Create security groups and rules
-        self.controller.createSecurityGroup(new_project.id, self.new_user, 
-                                               self.new_password)
-        
-        
-        #Create instance
-        host1 = self.controller.createInstance(new_project.id, self.new_user, 
-                                               self.new_password, new_network.get('network').get('id'),
-                                               "autohost1", key_name=key_pair)
-        print "Host1:", host1
-        
-        host2 = self.controller.createInstance(new_project.id, self.new_user, 
-                                               self.new_password, new_network.get('network').get('id'),
-                                               "autohost2", key_name=key_pair)
-        print "Host2:", host2
-
+        try:    
+            host2 = self.controller.createInstance(new_project.id, self.new_user, 
+                                                   self.new_password, new_network.get('network').get('id'),
+                                                   "autohost2", key_name=key_pair)
+            print "Host2:", host2
+        except Exception as e:
+            print "Error:", e
+            self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+            time.sleep(5)                
+            self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
+                                          self.new_user, self.new_password)
+            new_user.delete()
+            new_project.delete()
+            return 1
         
         with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
+            failure_list = ["unreachable","timeout","0 packets received"]
             stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network.get('network').get('id')+" ping -c 3 20.20.30.4")
             output = "".join(stdout.readlines()).strip()
             error_output = "".join(stderr.readlines()).strip()
             print "Output:", output
-            print "Error:", error_output
+            if error_output:
+                print "Error:", error_output
+            for word in failure_list:
+                if word in output:
+                    print "Ping failed...Failing test case\n"
+                    self.cleanup(new_network, new_user, new_project)
+                    return 1
             
             stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network.get('network').get('id')+" ping -c 3 20.20.30.3")
             output = "".join(stdout.readlines()).strip()
             error_output = "".join(stderr.readlines()).strip()
             print "Output:", output
-            print "Error:", error_output
+            if error_output:
+                print "Error:", error_output
+            for word in failure_list:
+                if word in output:
+                    print "Ping failed...Failing test case\n"
+                    self.cleanup(new_network, new_user, new_project)
+                    return 1
             
             stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network.get('network').get('id')+" ping -c 3 20.20.30.2")
             output = "".join(stdout.readlines()).strip()
             error_output = "".join(stderr.readlines()).strip()
             print "Output:", output
-            print "Error:", error_output
-
-        #call(["sudo","ip","netns","exec","qdhcp-"+new_network.get('network').get('id'), "ping", ])
+            if error_output:
+                print "Error:", error_output
+            for word in failure_list:
+                if word in output:
+                    print "Ping failed...Failing test case\n"
+                    self.cleanup(new_network, new_user, new_project)
+                    return 1
+   
+        self.cleanup(new_network, new_user, new_project)
+        return 0
         
-        
-            
-        # Cleanup
+    def cleanup(self, new_network, new_user, new_project):
         print "Cleanup:"
         self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
         self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
         self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-        time.sleep(5)
+        time.sleep(5)                
         self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
                                       self.new_user, self.new_password)
         new_user.delete()
         new_project.delete()
-        
         print "Done"
         return 0
-        
