@@ -133,7 +133,7 @@ class Controller(object):
     '''Create client'''
         
     def createInstance(self, tenant_id, username, password, network_id, 
-                       hostname, key_name):
+                       hostname, key_name, availability_zone):
         nova = self.get_nova_client(tenant_id, username, password)
         print nova.servers.list()
         nics = [{'net-id':network_id}]
@@ -142,7 +142,8 @@ class Controller(object):
         if image and flavor:
             instance = nova.servers.create(name=hostname, image=image, 
                                            flavor=flavor, nics=nics, 
-                                           key_name=key_name.name)
+                                           key_name=key_name.name, 
+                                           availability_zone = availability_zone)
             print "Waiting for Instance to boot up..."
             time.sleep(100)
 

@@ -6,7 +6,7 @@ Created on Nov 18, 2016
 from nodes.Controller import Controller
 from nodes.Compute import Compute
 import time
-from common.utils import SSHConnection
+from common.Utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
 import re
 

@@ -6,7 +6,7 @@ Created on Nov 21, 2016
 
 from nodes.Controller import Controller
 from nodes.Compute import Compute
-from common.utils import SSHConnection
+from common.Utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
 from common.Uplink import Uplink, UplinkInfo
 
@@ -90,7 +90,7 @@ class VdpAssoc(object):
                 self.cleanup(new_network, new_user, new_project)
                 return 1 #TODO: Return correct retval 
         
-        print "Check for looping...hostname:", host_name    
+        #print "Check for looping...hostname:", host_name    
         try:
             uplinkInst = Uplink(self.config_dict)
             

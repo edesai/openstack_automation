@@ -5,17 +5,24 @@ from testcases.CheckFlowsOnDelete import CheckFlowsOnDelete
 from testcases.CheckFlowsOnDeleteOneInst import CheckFlowsOnDeleteOneInst
 from testcases.VdpAssoc import VdpAssoc
 from testcases.VdpDeassoc import VdpDeassoc
+from testcases.CheckVdpKeepAlive import CheckVdpKeepAlive
+from testcases.DiffSubnetSameComputePing import DiffSubnetSameComputePing
+from testcases.DiffSubnetDiffComputePing import DiffSubnetDiffComputePing
+from testcases.SameSubnetSameComputePing import SameSubnetSameComputePing
 import sys
 import yaml
+
 
 TEST_CASE_MAP = {
     "1" : Ping,
     "2" : CheckFlowsOnDelete,
     "3" : CheckFlowsOnDeleteOneInst,
     "4" : VdpAssoc,
-    "5" : VdpDeassoc
-    #"6" : VlanTranslation
-    
+    "5" : VdpDeassoc,
+    "6" : CheckVdpKeepAlive,
+    "7" : SameSubnetSameComputePing,
+    "8" : DiffSubnetSameComputePing,
+    "9" : DiffSubnetDiffComputePing      
     }
 
 
@@ -27,21 +34,7 @@ class BaseTestCase():
 def main():
     parser = argparse.ArgumentParser(description='This is OpenStack TestSuite')
     parser.add_argument('-f','--testbed_file', help = 'Provide the testbed file', required=True)
-    '''parser.add_argument('--tests', help = 'Provide the test case', required=True)
-    parser.add_argument('--dcnm', help = 'Provide the DCNM IP Address', required=True)
-    parser.add_argument('--dcnmSysUsername', help = 'Provide the system user name of the dcnm', default = "root")
-    parser.add_argument('--dcnmSysPassword', help = 'Provide the system password of the dcnm', default = "cisco123")
-    parser.add_argument('--dcnmGuiUsername', help = 'Provide the GUI user name of the dcnm', default = "admin")
-    parser.add_argument('--dcnmGuiPassword', help = 'Provide the GUI password of the dcnm', default = "cisco123")
-    parser.add_argument('--computeHosts', help = 'Provide the Compute node IP Address', required=True)
-    parser.add_argument('--computeUsername', help = 'Provide the user name of the compute node', default = "localadmin")
-    parser.add_argument('--computePassword', help = 'Provide the password of the compute node', default = "cisco123")
-    parser.add_argument('--controller', help = 'Provide the Controller node IP Address', required=True)
-    parser.add_argument('--controllerUsername', help = 'Provide the user name of the controller node', default = "admin")
-    parser.add_argument('--controllerSysUsername', help = 'Provide the system user name of the controller node', default = "localadmin")
-    parser.add_argument('--controllerPassword', help = 'Provide the password of the controller node', default = "cisco123")
-    parser.add_argument('--dbUsername', help = 'Provide the Mysql db  user name of the controller node', default = "root")
-    parser.add_argument('--dbPassword', help = 'Provide the Mysql password of the controller node', default = "cisco123")'''
+
     args = parser.parse_args()
     file_handle = open(args.testbed_file)
     config_dict = yaml.safe_load(file_handle)

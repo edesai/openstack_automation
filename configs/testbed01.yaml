@@ -11,7 +11,7 @@ testbed:
         sys_password: cisco123
 
 tests:
-    - 1
+    - 9
 #    - 2
 #    - 3
 #    - 4
@@ -32,5 +32,13 @@ computes:
       password: cisco123
     - address: 172.28.10.115
       username: localadmin
+      password: cisco123
+      
+fabric_switch:
+    - address: 10.10.2.75
+      username: admin
+      password: cisco123
+    - address: 10.10.2.73
+      username: admin
       password: cisco123
     

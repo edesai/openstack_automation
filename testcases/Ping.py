@@ -7,8 +7,7 @@ from testcases.BaseTest import BaseTest
 from nodes.Controller import Controller
 from nodes.Compute import Compute
 import time
-import sys
-from common.utils import SSHConnection
+from common.Utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
 
 
