@@ -10,13 +10,10 @@ import time
 from common.Utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
 
-
-
-class Ping(BaseTest):
+class SameSubnetDiffComputePing(object):
     '''
     classdocs
     '''
-
     def __init__(self, config_dict):
         '''
         Constructor

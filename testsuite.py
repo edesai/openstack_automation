@@ -9,6 +9,7 @@ from testcases.CheckVdpKeepAlive import CheckVdpKeepAlive
 from testcases.DiffSubnetSameComputePing import DiffSubnetSameComputePing
 from testcases.DiffSubnetDiffComputePing import DiffSubnetDiffComputePing
 from testcases.SameSubnetSameComputePing import SameSubnetSameComputePing
+from testcases.CheckDCNM import CheckDCNM
 import sys
 import yaml
 
@@ -22,8 +23,8 @@ TEST_CASE_MAP = {
     "6" : CheckFlowsOnDeleteOneInst,
     "7" : VdpAssoc,
     "8" : VdpDeassoc,
-    "9" : CheckVdpKeepAlive
-      
+    "9" : CheckVdpKeepAlive,
+    "10": CheckDCNM  
     }
 
 
