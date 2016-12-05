@@ -11,14 +11,14 @@ testbed:
         sys_password: cisco123
 
 tests:
-    - 9
+    - 7
 #    - 2
 #    - 3
 #    - 4
 #    - 5
 
 controller:
-    address: 172.28.10.110
+    address: edesai-ucs-110
     username: admin
     password: cisco123
     sys_username: localadmin
@@ -27,10 +27,10 @@ controller:
       password: cisco123
 
 computes:
-    - address: 172.28.10.110
+    - address: edesai-ucs-110
       username: localadmin
       password: cisco123
-    - address: 172.28.10.115
+    - address: edesai-ucs-115
       username: localadmin
       password: cisco123
       

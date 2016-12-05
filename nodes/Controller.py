@@ -71,18 +71,22 @@ class Controller(object):
  
 
     def createProject(self, tenant_name):
-        '''
-        '''
         keystone = self.get_keystone_client(self.username, 'RegionOne')
-
         # Creating tenant/project
         new_tenant = keystone.tenants.create(tenant_name,
                                              description="Automation tenant",
                                              enabled=True)
         return new_tenant
     
+    def getProject(self, tenant_name):
+        keystone = self.get_keystone_client(self.username, 'RegionOne')
+        tenants = keystone.tenants.list()
+        for tenant in tenants:
+            if tenant.name == tenant_name:
+                return tenant
+        return None
+    
     def createUser(self, new_tenant, new_username, new_password):  
-        
         keystone = self.get_keystone_client(self.username, 'RegionOne')  
         # Creating new user
         roleToUse = None
@@ -104,8 +108,15 @@ class Controller(object):
             sys.exit(-1) #TODO: Return specific codes
 
         return new_user
-        
-        
+    
+    def getUser(self, user_name):
+        keystone = self.get_keystone_client(self.username, 'RegionOne')
+        users = keystone.users.list() 
+        for user in users:
+            if user.name == user_name:
+                return user    
+        return None
+    
     def createNetwork(self, tenant, name, new_username, new_password):
         neutron = self.get_neutron_client(tenant, new_username, new_password)
         body = {"network": {"name": name,
@@ -115,6 +126,15 @@ class Controller(object):
         print "Created network:", new_network, "network_id:", new_network_id, "\n"
         return new_network
     
+    def getNetwork(self, tenant, name, new_username, new_password):
+        neutron = self.get_neutron_client(tenant, new_username, new_password)
+        networks_dict = neutron.list_networks(retrieve_all=True)
+        networks = networks_dict['networks']
+        for nw in networks:
+            if nw['name'] == name:
+                return nw
+        return None    
+        
      
     def createSubnet(self, new_network_id, tenant, new_username, new_password, subnet_range): 
         neutron = self.get_neutron_client(tenant, new_username, new_password)   
@@ -203,6 +223,15 @@ class Controller(object):
         return group
          
    
-             
-         
-        
+    def createAggregate(self, tenant_id, username, password, agg_name, availability_zone): 
+        nova = self.get_nova_client(tenant_id, username, password)        
+        aggregate = nova.aggregates.create(agg_name, availability_zone)
+        return aggregate
+    
+    def getAggregate(self, tenant_id, username, password, agg_name):
+        nova = self.get_nova_client(tenant_id, username, password)
+        aggregates = nova.aggregates.list()
+        for aggregate in aggregates:
+            if aggregate.name == agg_name:
+                return aggregate    
+        return None    
