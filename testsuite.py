@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import argparse
-from testcases.Ping import Ping
+from testcases.SameSubnetDiffComputePing import SameSubnetDiffComputePing 
 from testcases.CheckFlowsOnDelete import CheckFlowsOnDelete
 from testcases.CheckFlowsOnDeleteOneInst import CheckFlowsOnDeleteOneInst
 from testcases.VdpAssoc import VdpAssoc
@@ -15,14 +15,15 @@ import yaml
 
 TEST_CASE_MAP = {
     "1" : SameSubnetDiffComputePing,
-    "2" : CheckFlowsOnDelete,
-    "3" : CheckFlowsOnDeleteOneInst,
-    "4" : VdpAssoc,
-    "5" : VdpDeassoc,
-    "6" : CheckVdpKeepAlive,
-    "7" : SameSubnetSameComputePing,
-    "8" : DiffSubnetSameComputePing,
-    "9" : DiffSubnetDiffComputePing      
+    "2" : SameSubnetSameComputePing,
+    "3" : DiffSubnetSameComputePing,
+    "4" : DiffSubnetDiffComputePing,
+    "5" : CheckFlowsOnDelete,
+    "6" : CheckFlowsOnDeleteOneInst,
+    "7" : VdpAssoc,
+    "8" : VdpDeassoc,
+    "9" : CheckVdpKeepAlive
+      
     }
 
 

@@ -206,6 +206,7 @@ class SameSubnetSameComputePing(object):
         
             
     def cleanup(self):
+        
         print "Cleanup:"
         skip_nova = False
         skip_proj = False
@@ -227,20 +228,21 @@ class SameSubnetSameComputePing(object):
             print "Error:", e
             
         if skip_nova is False:        
-            try:    
-                zone1 = "auto_agg_"+self.config_dict['computes'][0]['address']
+            try:
+                agg1 = "auto_agg_"+self.config_dict['computes'][0]['address']    
                 aggregate1 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
-                                                         agg_name=zone1)    
+                                                         agg_name=agg1)    
                 if not aggregate1:
-                    print("Aggregate not found during cleanup")
+                    print("Aggregate1 not found during cleanup")
             except Exception as e:
                 print "Error:", e
-                
-            try:    
+            
+            try:
                 hosts = nova.hosts.list()
-                hosts_list = [h for h in hosts if h.zone == "nova"]
-                if hosts_list:
-                    aggregate1.remove_host(hosts_list[0].host_name)
+                zone1 = "auto_az_"+self.config_dict['computes'][0]['address']
+                host1 = [h for h in hosts if h.zone == zone1]    
+                if host1 and aggregate1:
+                    aggregate1.remove_host(host1[0].host_name)
                 else:
                     print("Hosts not found during cleanup")
             except Exception as e:

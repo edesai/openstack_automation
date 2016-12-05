@@ -35,6 +35,7 @@ class DiffSubnetDiffComputePing(object):
         self.new_subnw1 = "20.20.30.0/24"
         self.new_network2 = "auto_nw2"
         self.new_subnw2 = "20.20.40.0/24"
+        self.config_dict = config_dict
              
     # TODO: enforce this
     def runTest(self):
@@ -124,22 +125,68 @@ class DiffSubnetDiffComputePing(object):
             self.cleanup()
             return 1  
         
+        hosts = nova.hosts.list()
+        hosts_list = [h for h in hosts if h.zone == "nova"]
+        print "Hosts list:", hosts_list
+          
         
         try:
-            #Create instance
-            host1 = self.controller.createInstance(new_project.id, self.new_user, 
-                                                   self.new_password, new_network1.get('network').get('id'),
-                                                   "autohost1", key_name=key_pair)
-            print "Host1:", host1
+            agg1 = "auto_agg_"+self.config_dict['computes'][0]['address']
+            zone1 =  "auto_az_"+self.config_dict['computes'][0]['address']
+            aggregate1 = self.controller.createAggregate(new_project.id, self.new_user, 
+                                                   self.new_password, agg_name=agg1, 
+                                               availability_zone=zone1)
+            
+            if hosts_list:
+                aggregate1.add_host(hosts_list[0].host_name)                
+            else:
+                raise Exception("No hosts found")
         except Exception as e:
-            print "Error:", e                
+            print "Error:", e
             self.cleanup()
             return 1
         
-        try:    
-            host2 = self.controller.createInstance(new_project.id, self.new_user, 
+        try:
+            agg2 = "auto_agg_"+self.config_dict['computes'][1]['address']
+            zone2 =  "auto_az_"+self.config_dict['computes'][1]['address']
+            aggregate2 = self.controller.createAggregate(new_project.id, self.new_user, 
+                                                   self.new_password, agg_name=agg2, 
+                                               availability_zone=zone2)
+            
+            if hosts_list:
+                aggregate2.add_host(hosts_list[1].host_name)                
+            else:
+                raise Exception("No hosts found")
+        except Exception as e:
+            print "Error:", e
+            self.cleanup()
+            return 1
+        
+        try:
+            #Create instance
+            zones = nova.availability_zones.list()    
+            for zone in zones:
+                zone_name = str(zone.zoneName)
+                if zone_name == zone1:
+                    print "Launching instance in zone: ", zone_name
+                    host1 = self.controller.createInstance(new_project.id, self.new_user, 
+                                                   self.new_password, new_network1.get('network').get('id'),
+                                                   "autohost1", key_name=key_pair, availability_zone=zone_name)
+            print "Host1:", host1
+        except Exception as e:
+            print "Error:", e
+            self.cleanup()
+            return 1
+        
+        try:
+            zones = nova.availability_zones.list()    
+            for zone in zones:
+                zone_name = str(zone.zoneName)
+                if zone_name == zone2:
+                    print "Launching instance in zone: ", zone_name    
+                    host2 = self.controller.createInstance(new_project.id, self.new_user, 
                                                    self.new_password, new_network2.get('network').get('id'),
-                                                   "autohost2", key_name=key_pair)
+                                                   "autohost2", key_name=key_pair, availability_zone=zone_name)
             print "Host2:", host2
         except Exception as e:
             print "Error:", e
@@ -199,7 +246,7 @@ class DiffSubnetDiffComputePing(object):
         self.cleanup()
         return 0
         
-def cleanup(self):
+    def cleanup(self):
         
         print "Cleanup:"
         skip_nova = False
@@ -223,18 +270,20 @@ def cleanup(self):
             
         if skip_nova is False:        
             try:
-                zone1 = "auto_agg_"+self.config_dict['computes'][0]['address']    
+                agg1 = "auto_agg_"+self.config_dict['computes'][0]['address']    
                 aggregate1 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
-                                                         agg_name=zone1)    
+                                                         agg_name=agg1)    
                 if not aggregate1:
                     print("Aggregate1 not found during cleanup")
             except Exception as e:
                 print "Error:", e
-                
-            try:    
+            
+            try:
                 hosts = nova.hosts.list()
-                if hosts:
-                    aggregate1.remove_host(hosts[0].host_name)
+                zone1 = "auto_az_"+self.config_dict['computes'][0]['address']
+                host1 = [h for h in hosts if h.zone == zone1]    
+                if host1 and aggregate1:
+                    aggregate1.remove_host(host1[0].host_name)
                 else:
                     print("Hosts not found during cleanup")
             except Exception as e:
@@ -246,18 +295,19 @@ def cleanup(self):
                 print "Error:", e
 
             try:
-                zone2 = "auto_agg_"+self.config_dict['computes'][1]['address']    
+                agg2 = "auto_agg_"+self.config_dict['computes'][1]['address']    
                 aggregate2 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
-                                                         agg_name=zone2)    
+                                                         agg_name=agg2)    
                 if not aggregate2:
                     print("Aggregate2 not found during cleanup")
             except Exception as e:
                 print "Error:", e
                 
-            try:    
-                hosts = nova.hosts.list()
-                if hosts:
-                    aggregate2.remove_host(hosts[1].host_name)
+            try:
+                zone2 = "auto_az_"+self.config_dict['computes'][1]['address']
+                host2 = [h for h in hosts if h.zone == zone2]    
+                if host2 and aggregate2:
+                    aggregate2.remove_host(host2[0].host_name)
                 else:
                     print("Hosts not found during cleanup")
             except Exception as e:
@@ -310,8 +360,8 @@ def cleanup(self):
             self.controller.deleteNetwork(new_network2['id'], self.new_tenant, 
                                       self.new_user, self.new_password)
         except Exception as e:
-            print "Error:", e
-            
+            print "Error:", e    
+        
         try:
             new_user = self.controller.getUser(self.new_user)
             if not new_user:
@@ -330,5 +380,6 @@ def cleanup(self):
             print "Error:", e
         
         print "Done"
+        return 0
         return 0
 

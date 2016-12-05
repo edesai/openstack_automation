@@ -172,7 +172,7 @@ class DiffSubnetSameComputePing(object):
             zones = nova.availability_zones.list()    
             for zone in zones:
                 zone_name = str(zone.zoneName)
-                if zone_name == "auto_az_"+self.config_dict['computes'][0]['address']:
+                if zone_name == zone1:
                     print "Launching instance in zone: ", zone_name        
                     host2 = self.controller.createInstance(new_project.id, self.new_user, 
                                                            self.new_password, new_network2.get('network').get('id'),
@@ -238,9 +238,10 @@ class DiffSubnetSameComputePing(object):
                     
         self.cleanup()
         return 0
-        
-            
+
+    
     def cleanup(self):
+        
         print "Cleanup:"
         skip_nova = False
         skip_proj = False
@@ -264,25 +265,26 @@ class DiffSubnetSameComputePing(object):
         if skip_nova is False:        
             try:
                 agg1 = "auto_agg_"+self.config_dict['computes'][0]['address']    
-                aggregate = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
+                aggregate1 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
                                                          agg_name=agg1)    
-                if not aggregate:
-                    print("Aggregate not found during cleanup")
+                if not aggregate1:
+                    print("Aggregate1 not found during cleanup")
             except Exception as e:
                 print "Error:", e
-                
-            try:    
+            
+            try:
                 hosts = nova.hosts.list()
-                hosts_list = [h for h in hosts if h.zone == "nova"]
-                if hosts_list:
-                    aggregate.remove_host(hosts_list[0].host_name)
+                zone1 = "auto_az_"+self.config_dict['computes'][0]['address']
+                host1 = [h for h in hosts if h.zone == zone1]    
+                if host1 and aggregate1:
+                    aggregate1.remove_host(host1[0].host_name)
                 else:
                     print("Hosts not found during cleanup")
             except Exception as e:
                 print "Error:", e
                 
             try:             
-                nova.aggregates.delete(aggregate) 
+                nova.aggregates.delete(aggregate1) 
             except Exception as e:
                 print "Error:", e
                 
@@ -348,5 +350,4 @@ class DiffSubnetSameComputePing(object):
             print "Error:", e
         
         print "Done"
-        return 0
-        
+        return 0    
