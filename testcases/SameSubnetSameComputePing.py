@@ -111,12 +111,14 @@ class SameSubnetSameComputePing(object):
             return 1
         
         try:
-            aggregate = self.controller.createAggregate(new_project.id, self.new_user, 
+            hosts = nova.hosts.list()
+            hosts_list = [h for h in hosts if h.zone == "nova"]
+            aggregate1 = self.controller.createAggregate(new_project.id, self.new_user, 
                                                    self.new_password, agg_name="auto_agg_"+self.config_dict['computes'][0]['address'], 
                                                availability_zone = "auto_az_"+self.config_dict['computes'][0]['address'])
-            hosts = nova.hosts.list()
-            if hosts:
-                aggregate.add_host(hosts[0].host_name)                
+            
+            if hosts_list:
+                aggregate1.add_host(hosts_list[0].host_name)                
             else:
                 raise Exception("No hosts found")
         except Exception as e:
@@ -140,7 +142,7 @@ class SameSubnetSameComputePing(object):
         except Exception as e:
             print "Error:", e
             self.cleanup()
-            return 1
+            return 1        
         
         try:
             #Create instance
@@ -226,24 +228,26 @@ class SameSubnetSameComputePing(object):
             
         if skip_nova is False:        
             try:    
-                aggregate = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
-                                                         agg_name="auto_agg_"+self.config_dict['computes'][0]['address'])    
-                if not aggregate:
+                zone1 = "auto_agg_"+self.config_dict['computes'][0]['address']
+                aggregate1 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
+                                                         agg_name=zone1)    
+                if not aggregate1:
                     print("Aggregate not found during cleanup")
             except Exception as e:
                 print "Error:", e
                 
             try:    
                 hosts = nova.hosts.list()
-                if hosts:
-                    aggregate.remove_host(hosts[0].host_name)
+                hosts_list = [h for h in hosts if h.zone == "nova"]
+                if hosts_list:
+                    aggregate1.remove_host(hosts_list[0].host_name)
                 else:
                     print("Hosts not found during cleanup")
             except Exception as e:
                 print "Error:", e
                 
             try:             
-                nova.aggregates.delete(aggregate) 
+                nova.aggregates.delete(aggregate1) 
             except Exception as e:
                 print "Error:", e
                 

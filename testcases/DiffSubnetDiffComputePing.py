@@ -44,6 +44,15 @@ class DiffSubnetDiffComputePing(object):
         except Exception as e:
             print "Error:", e 
             return 1
+        
+        try: 
+            nova = self.controller.get_nova_client(new_project.id, self.new_user, self.new_password)  
+            if not nova:
+                raise Exception("Nova client not found")
+        except Exception as e:
+            print "Error:", e
+            self.cleanup()
+            return 1
           
         try:    
             #Create user
@@ -52,7 +61,7 @@ class DiffSubnetDiffComputePing(object):
                                        new_password = self.new_password)
         except Exception as e:
             print "Error:", e
-            new_project.delete()
+            self.cleanup()
             return 1
         
         try:    
@@ -62,8 +71,7 @@ class DiffSubnetDiffComputePing(object):
             print "New Network:", new_network1   
         except Exception as e:
             print "Error:", e
-            new_user.delete()
-            new_project.delete() 
+            self.cleanup() 
             return 1
            
         try:
@@ -74,10 +82,7 @@ class DiffSubnetDiffComputePing(object):
             print "New Subnetwork:", new_subnet1
         except Exception as e:
             print "Error:", e                
-            self.controller.deleteNetwork(new_network1.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)
-            new_user.delete()
-            new_project.delete()
+            self.cleanup()
             return 1
         
         try:    
@@ -87,10 +92,7 @@ class DiffSubnetDiffComputePing(object):
             print "New Network:", new_network2   
         except Exception as e:
             print "Error:", e
-            self.controller.deleteNetwork(new_network1.get('network').get('id'), self.new_tenant, 
-                              self.new_user, self.new_password)
-            new_user.delete()
-            new_project.delete() 
+            self.cleanup() 
             return 1
            
         try:
@@ -101,12 +103,7 @@ class DiffSubnetDiffComputePing(object):
             print "New Subnetwork:", new_subnet2
         except Exception as e:
             print "Error:", e 
-            self.controller.deleteNetwork(new_network1.get('network').get('id'), self.new_tenant, 
-                  self.new_user, self.new_password)               
-            self.controller.deleteNetwork(new_network2.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)
-            new_user.delete()
-            new_project.delete()
+            self.cleanup()
             return 1
         
         try:
@@ -115,12 +112,7 @@ class DiffSubnetDiffComputePing(object):
                                                    self.new_password)
         except Exception as e:
             print "Error:", e                
-            self.controller.deleteNetwork(new_network1.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)
-            self.controller.deleteNetwork(new_network2.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)            
-            new_user.delete()
-            new_project.delete()
+            self.cleanup()
             return 1             
         
         try:    
@@ -129,14 +121,7 @@ class DiffSubnetDiffComputePing(object):
                                                    self.new_password)
         except Exception as e:
             print "Error:", e
-            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-            time.sleep(5)                
-            self.controller.deleteNetwork(new_network1.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)
-            self.controller.deleteNetwork(new_network2.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)            
-            new_user.delete()
-            new_project.delete()
+            self.cleanup()
             return 1  
         
         
@@ -147,15 +132,8 @@ class DiffSubnetDiffComputePing(object):
                                                    "autohost1", key_name=key_pair)
             print "Host1:", host1
         except Exception as e:
-            print "Error:", e
-            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-            time.sleep(5)                
-            self.controller.deleteNetwork(new_network1.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)
-            self.controller.deleteNetwork(new_network2.get('network').get('id'), self.new_tenant, 
-                                      self.new_user, self.new_password)        
-            new_user.delete()
-            new_project.delete()
+            print "Error:", e                
+            self.cleanup()
             return 1
         
         try:    
@@ -165,15 +143,7 @@ class DiffSubnetDiffComputePing(object):
             print "Host2:", host2
         except Exception as e:
             print "Error:", e
-            self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
-            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-            time.sleep(5)
-            self.controller.deleteNetwork(new_network1.get('network').get('id'), self.new_tenant, 
-                              self.new_user, self.new_password)                
-            self.controller.deleteNetwork(new_network2.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)
-            new_user.delete()
-            new_project.delete()
+            self.cleanup()
             return 1
         
         with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
@@ -187,7 +157,7 @@ class DiffSubnetDiffComputePing(object):
             for word in failure_list:
                 if word in output:
                     print "Ping failed...Failing test case\n"
-                    self.cleanup(new_network1, new_network2, new_user, new_project)
+                    self.cleanup()
                     return 1
             
             stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 20.20.40.2")
@@ -199,7 +169,7 @@ class DiffSubnetDiffComputePing(object):
             for word in failure_list:
                 if word in output:
                     print "Ping failed...Failing test case\n"
-                    self.cleanup(new_network1, new_network2, new_user, new_project)
+                    self.cleanup()
                     return 1
             
             stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 20.20.30.3")
@@ -211,7 +181,7 @@ class DiffSubnetDiffComputePing(object):
             for word in failure_list:
                 if word in output:
                     print "Ping failed...Failing test case\n"
-                    self.cleanup(new_network1, new_network2, new_user, new_project)
+                    self.cleanup()
                     return 1
                 
             stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 20.20.30.2")
@@ -223,23 +193,142 @@ class DiffSubnetDiffComputePing(object):
             for word in failure_list:
                 if word in output:
                     print "Ping failed...Failing test case\n"
-                    self.cleanup(new_network1, new_network2, new_user, new_project)
+                    self.cleanup()
                     return 1
    
-        self.cleanup(new_network1, new_network2, new_user, new_project)
+        self.cleanup()
         return 0
         
-    def cleanup(self, new_network1, new_network2, new_user, new_project):
+def cleanup(self):
+        
         print "Cleanup:"
-        self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
-        self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
-        self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-        time.sleep(5)                
-        self.controller.deleteNetwork(new_network1.get('network').get('id'), self.new_tenant, 
+        skip_nova = False
+        skip_proj = False
+        
+        try:
+            new_project = self.controller.getProject(self.new_tenant)
+            if not new_project:
+                print "Project not found during cleanup"
+                skip_proj = True
+        except Exception as e:
+            print "Error:", e
+        
+        try: 
+            nova = self.controller.get_nova_client(new_project.id, self.new_user, self.new_password)  
+            if not nova:
+                print("Nova client not found during cleanup")
+                skip_nova = True
+        except Exception as e:
+            print "Error:", e
+            
+        if skip_nova is False:        
+            try:
+                zone1 = "auto_agg_"+self.config_dict['computes'][0]['address']    
+                aggregate1 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
+                                                         agg_name=zone1)    
+                if not aggregate1:
+                    print("Aggregate1 not found during cleanup")
+            except Exception as e:
+                print "Error:", e
+                
+            try:    
+                hosts = nova.hosts.list()
+                if hosts:
+                    aggregate1.remove_host(hosts[0].host_name)
+                else:
+                    print("Hosts not found during cleanup")
+            except Exception as e:
+                print "Error:", e
+                
+            try:             
+                nova.aggregates.delete(aggregate1) 
+            except Exception as e:
+                print "Error:", e
+
+            try:
+                zone2 = "auto_agg_"+self.config_dict['computes'][1]['address']    
+                aggregate2 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
+                                                         agg_name=zone2)    
+                if not aggregate2:
+                    print("Aggregate2 not found during cleanup")
+            except Exception as e:
+                print "Error:", e
+                
+            try:    
+                hosts = nova.hosts.list()
+                if hosts:
+                    aggregate2.remove_host(hosts[1].host_name)
+                else:
+                    print("Hosts not found during cleanup")
+            except Exception as e:
+                print "Error:", e
+                
+            try:             
+                nova.aggregates.delete(aggregate2) 
+            except Exception as e:
+                print "Error:", e
+                
+        if skip_proj is False:    
+            try:
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+            except Exception as e:
+                print "Error:", e
+            
+            try:
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
+            except Exception as e:
+                print "Error:", e
+            
+            try:
+                self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+                time.sleep(5)                
+            except Exception as e:
+                print "Error:", e
+        try:
+            new_network1 = self.controller.getNetwork(self.new_tenant,self.new_network1, 
+                                                         self.new_user, self.new_password)
+            if not new_network1:
+                print("Network not found during cleanup")
+        except Exception as e:
+            print "Error:", e
+            
+        try:
+            self.controller.deleteNetwork(new_network1['id'], self.new_tenant, 
                                       self.new_user, self.new_password)
-        self.controller.deleteNetwork(new_network2.get('network').get('id'), self.new_tenant, 
-                              self.new_user, self.new_password)
-        new_user.delete()
-        new_project.delete()
+        except Exception as e:
+            print "Error:", e
+            
+        try:
+            new_network2 = self.controller.getNetwork(self.new_tenant,self.new_network2, 
+                                                         self.new_user, self.new_password)
+            if not new_network2:
+                print("Network not found during cleanup")
+        except Exception as e:
+            print "Error:", e
+            
+        try:
+            self.controller.deleteNetwork(new_network2['id'], self.new_tenant, 
+                                      self.new_user, self.new_password)
+        except Exception as e:
+            print "Error:", e
+            
+        try:
+            new_user = self.controller.getUser(self.new_user)
+            if not new_user:
+                print("User not found during cleanup")
+        except Exception as e:
+            print "Error:", e
+            
+        try:
+            new_user.delete()
+        except Exception as e:
+            print "Error:", e
+            
+        try:
+            new_project.delete()
+        except Exception as e:
+            print "Error:", e
+        
         print "Done"
         return 0
+

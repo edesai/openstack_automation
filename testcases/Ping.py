@@ -32,8 +32,9 @@ class Ping(BaseTest):
         self.new_tenant = "auto"
         self.new_user = "auto_user"
         self.new_password = "cisco123"
-        self.new_network = "auto_nw"
+        self.new_network1 = "auto_nw"
         self.new_subnw = "20.20.30.0/24"
+        self.config_dict = config_dict
              
     # TODO: enforce this
     def runTest(self):
@@ -43,6 +44,15 @@ class Ping(BaseTest):
         except Exception as e:
             print "Error:", e 
             return 1
+        
+        try: 
+            nova = self.controller.get_nova_client(new_project.id, self.new_user, self.new_password)  
+            if not nova:
+                raise Exception("Nova client not found")
+        except Exception as e:
+            print "Error:", e
+            self.cleanup()
+            return 1 
           
         try:    
             #Create user
@@ -51,32 +61,28 @@ class Ping(BaseTest):
                                        new_password = self.new_password)
         except Exception as e:
             print "Error:", e
-            new_project.delete()
+            self.cleanup()
             return 1
         
         try:    
             #Create network
-            new_network = self.controller.createNetwork(self.new_tenant,self.new_network, 
+            new_network1 = self.controller.createNetwork(self.new_tenant,self.new_network1, 
                                           self.new_user, self.new_password)
-            print "New Network:", new_network   
+            print "New Network:", new_network1  
         except Exception as e:
             print "Error:", e
-            new_user.delete()
-            new_project.delete() 
+            self.cleanup() 
             return 1
            
         try:
             #Create subnet
-            new_subnet = self.controller.createSubnet(new_network.get('network').get('id'), 
+            new_subnet = self.controller.createSubnet(new_network1.get('network').get('id'), 
                                                        self.new_tenant,self.new_user, self.new_password,
                                                        "20.20.30.0/24")
             print "New Subnetwork:", new_subnet
         except Exception as e:
             print "Error:", e                
-            self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)
-            new_user.delete()
-            new_project.delete()
+            self.cleanup()
             return 1
           
         try:
@@ -85,10 +91,7 @@ class Ping(BaseTest):
                                                    self.new_password)
         except Exception as e:
             print "Error:", e                
-            self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)
-            new_user.delete()
-            new_project.delete()
+            self.cleanup()
             return 1             
         
         try:    
@@ -97,49 +100,80 @@ class Ping(BaseTest):
                                                    self.new_password)
         except Exception as e:
             print "Error:", e
-            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-            time.sleep(5)                
-            self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)
-            new_user.delete()
-            new_project.delete()
-            return 1    
+            self.cleanup()
+            return 1  
+        
+        hosts = nova.hosts.list()
+        hosts_list = [h for h in hosts if h.zone == "nova"]
+        print "Hosts list:", hosts_list
+          
+        
+        try:
+            agg1 = "auto_agg_"+self.config_dict['computes'][0]['address']
+            zone1 =  "auto_az_"+self.config_dict['computes'][0]['address']
+            aggregate1 = self.controller.createAggregate(new_project.id, self.new_user, 
+                                                   self.new_password, agg_name=agg1, 
+                                               availability_zone=zone1)
+            
+            if hosts_list:
+                aggregate1.add_host(hosts_list[0].host_name)                
+            else:
+                raise Exception("No hosts found")
+        except Exception as e:
+            print "Error:", e
+            self.cleanup()
+            return 1
+        
+        try:
+            agg2 = "auto_agg_"+self.config_dict['computes'][1]['address']
+            zone2 =  "auto_az_"+self.config_dict['computes'][1]['address']
+            aggregate2 = self.controller.createAggregate(new_project.id, self.new_user, 
+                                                   self.new_password, agg_name=agg2, 
+                                               availability_zone=zone2)
+            
+            if hosts_list:
+                aggregate2.add_host(hosts_list[1].host_name)                
+            else:
+                raise Exception("No hosts found")
+        except Exception as e:
+            print "Error:", e
+            self.cleanup()
+            return 1
         
         try:
             #Create instance
-            host1 = self.controller.createInstance(new_project.id, self.new_user, 
-                                                   self.new_password, new_network.get('network').get('id'),
-                                                   "autohost1", key_name=key_pair)
+            zones = nova.availability_zones.list()    
+            for zone in zones:
+                zone_name = str(zone.zoneName)
+                if zone_name == zone1:
+                    print "Launching instance in zone: ", zone_name
+                    host1 = self.controller.createInstance(new_project.id, self.new_user, 
+                                                   self.new_password, new_network1.get('network').get('id'),
+                                                   "autohost1", key_name=key_pair, availability_zone=zone_name)
             print "Host1:", host1
         except Exception as e:
             print "Error:", e
-            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-            time.sleep(5)                
-            self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)
-            new_user.delete()
-            new_project.delete()
+            self.cleanup()
             return 1
         
-        try:    
-            host2 = self.controller.createInstance(new_project.id, self.new_user, 
-                                                   self.new_password, new_network.get('network').get('id'),
-                                                   "autohost2", key_name=key_pair)
+        try:
+            zones = nova.availability_zones.list()    
+            for zone in zones:
+                zone_name = str(zone.zoneName)
+                if zone_name == zone2:
+                    print "Launching instance in zone: ", zone_name    
+                    host2 = self.controller.createInstance(new_project.id, self.new_user, 
+                                                   self.new_password, new_network1.get('network').get('id'),
+                                                   "autohost2", key_name=key_pair, availability_zone=zone_name)
             print "Host2:", host2
         except Exception as e:
             print "Error:", e
-            self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
-            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-            time.sleep(5)                
-            self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
-                                          self.new_user, self.new_password)
-            new_user.delete()
-            new_project.delete()
+            self.cleanup()
             return 1
         
         with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
             failure_list = ["unreachable","timeout","0 packets received"]
-            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network.get('network').get('id')+" ping -c 3 20.20.30.4")
+            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 20.20.30.4")
             output = "".join(stdout.readlines()).strip()
             error_output = "".join(stderr.readlines()).strip()
             print "Output:", output
@@ -148,10 +182,10 @@ class Ping(BaseTest):
             for word in failure_list:
                 if word in output:
                     print "Ping failed...Failing test case\n"
-                    self.cleanup(new_network, new_user, new_project)
+                    self.cleanup()
                     return 1
             
-            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network.get('network').get('id')+" ping -c 3 20.20.30.3")
+            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 20.20.30.3")
             output = "".join(stdout.readlines()).strip()
             error_output = "".join(stderr.readlines()).strip()
             print "Output:", output
@@ -160,10 +194,10 @@ class Ping(BaseTest):
             for word in failure_list:
                 if word in output:
                     print "Ping failed...Failing test case\n"
-                    self.cleanup(new_network, new_user, new_project)
+                    self.cleanup()
                     return 1
             
-            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network.get('network').get('id')+" ping -c 3 20.20.30.2")
+            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 20.20.30.2")
             output = "".join(stdout.readlines()).strip()
             error_output = "".join(stderr.readlines()).strip()
             print "Output:", output
@@ -172,21 +206,130 @@ class Ping(BaseTest):
             for word in failure_list:
                 if word in output:
                     print "Ping failed...Failing test case\n"
-                    self.cleanup(new_network, new_user, new_project)
+                    self.cleanup()
                     return 1
    
-        self.cleanup(new_network, new_user, new_project)
+        self.cleanup()
         return 0
         
-    def cleanup(self, new_network, new_user, new_project):
+    def cleanup(self):
+        
         print "Cleanup:"
-        self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
-        self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
-        self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-        time.sleep(5)                
-        self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
+        skip_nova = False
+        skip_proj = False
+        
+        try:
+            new_project = self.controller.getProject(self.new_tenant)
+            if not new_project:
+                print "Project not found during cleanup"
+                skip_proj = True
+        except Exception as e:
+            print "Error:", e
+        
+        try: 
+            nova = self.controller.get_nova_client(new_project.id, self.new_user, self.new_password)  
+            if not nova:
+                print("Nova client not found during cleanup")
+                skip_nova = True
+        except Exception as e:
+            print "Error:", e
+            
+        if skip_nova is False:        
+            try:
+                agg1 = "auto_agg_"+self.config_dict['computes'][0]['address']    
+                aggregate1 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
+                                                         agg_name=agg1)    
+                if not aggregate1:
+                    print("Aggregate1 not found during cleanup")
+            except Exception as e:
+                print "Error:", e
+            
+            try:
+                hosts = nova.hosts.list()
+                zone1 = "auto_az_"+self.config_dict['computes'][0]['address']
+                host1 = [h for h in hosts if h.zone == zone1]    
+                if host1 and aggregate1:
+                    aggregate1.remove_host(host1[0].host_name)
+                else:
+                    print("Hosts not found during cleanup")
+            except Exception as e:
+                print "Error:", e
+                
+            try:             
+                nova.aggregates.delete(aggregate1) 
+            except Exception as e:
+                print "Error:", e
+
+            try:
+                agg2 = "auto_agg_"+self.config_dict['computes'][1]['address']    
+                aggregate2 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
+                                                         agg_name=agg2)    
+                if not aggregate2:
+                    print("Aggregate2 not found during cleanup")
+            except Exception as e:
+                print "Error:", e
+                
+            try:
+                zone2 = "auto_az_"+self.config_dict['computes'][1]['address']
+                host2 = [h for h in hosts if h.zone == zone2]    
+                if host2 and aggregate2:
+                    aggregate2.remove_host(host2[0].host_name)
+                else:
+                    print("Hosts not found during cleanup")
+            except Exception as e:
+                print "Error:", e
+                
+            try:             
+                nova.aggregates.delete(aggregate2) 
+            except Exception as e:
+                print "Error:", e
+                
+        if skip_proj is False:    
+            try:
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+            except Exception as e:
+                print "Error:", e
+            
+            try:
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
+            except Exception as e:
+                print "Error:", e
+            
+            try:
+                self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+                time.sleep(5)                
+            except Exception as e:
+                print "Error:", e
+        try:
+            new_network1 = self.controller.getNetwork(self.new_tenant,self.new_network1, 
+                                                         self.new_user, self.new_password)
+            if not new_network1:
+                print("Network not found during cleanup")
+        except Exception as e:
+            print "Error:", e
+            
+        try:
+            self.controller.deleteNetwork(new_network1['id'], self.new_tenant, 
                                       self.new_user, self.new_password)
-        new_user.delete()
-        new_project.delete()
+        except Exception as e:
+            print "Error:", e
+        
+        try:
+            new_user = self.controller.getUser(self.new_user)
+            if not new_user:
+                print("User not found during cleanup")
+        except Exception as e:
+            print "Error:", e
+            
+        try:
+            new_user.delete()
+        except Exception as e:
+            print "Error:", e
+            
+        try:
+            new_project.delete()
+        except Exception as e:
+            print "Error:", e
+        
         print "Done"
         return 0

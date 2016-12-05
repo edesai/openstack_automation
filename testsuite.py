@@ -14,7 +14,7 @@ import yaml
 
 
 TEST_CASE_MAP = {
-    "1" : Ping,
+    "1" : SameSubnetDiffComputePing,
     "2" : CheckFlowsOnDelete,
     "3" : CheckFlowsOnDeleteOneInst,
     "4" : VdpAssoc,
