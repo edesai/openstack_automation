@@ -26,15 +26,20 @@ class SameSubnetDiffComputePing(object):
         for compute in config_dict['computes']:
             self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
-        self.new_tenant = "auto"
-        self.new_user = "auto_user"
-        self.new_password = "cisco123"
-        self.new_network1 = "auto_nw"
-        self.new_subnw = "20.20.30.0/24"
+        self.admin_username = config_dict['controller']['username']
+        self.admin_password = config_dict['controller']['password']
+        self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
+        self.new_user = config_dict['openstack_tenant_details']['tenant_username']
+        self.new_password = config_dict['openstack_tenant_details']['tenant_password']
+        self.new_network1 = config_dict['openstack_tenant_details']['tenant_network1']
+        self.new_subnw1 = config_dict['openstack_tenant_details']['tenant_subnw1']
+        self.new_inst1 = config_dict['openstack_tenant_details']['tenant_inst1']
+        self.new_inst2 = config_dict['openstack_tenant_details']['tenant_inst2']
         self.config_dict = config_dict
              
     # TODO: enforce this
     def runTest(self):
+
         try:
             #Create project
             new_project = self.controller.createProject(self.new_tenant)
@@ -75,7 +80,7 @@ class SameSubnetDiffComputePing(object):
             #Create subnet
             new_subnet = self.controller.createSubnet(new_network1.get('network').get('id'), 
                                                        self.new_tenant,self.new_user, self.new_password,
-                                                       "20.20.30.0/24")
+                                                       self.new_subnw1)
             print "New Subnetwork:", new_subnet
         except Exception as e:
             print "Error:", e                
@@ -106,8 +111,8 @@ class SameSubnetDiffComputePing(object):
           
         
         try:
-            agg1 = "auto_agg_"+self.config_dict['computes'][0]['address']
-            zone1 =  "auto_az_"+self.config_dict['computes'][0]['address']
+            agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['address']
+            zone1 =  self.new_tenant+"_az_"+self.config_dict['computes'][0]['address']
             aggregate1 = self.controller.createAggregate(new_project.id, self.new_user, 
                                                    self.new_password, agg_name=agg1, 
                                                availability_zone=zone1)
@@ -122,8 +127,8 @@ class SameSubnetDiffComputePing(object):
             return 1
         
         try:
-            agg2 = "auto_agg_"+self.config_dict['computes'][1]['address']
-            zone2 =  "auto_az_"+self.config_dict['computes'][1]['address']
+            agg2 = self.new_tenant+"_agg_"+self.config_dict['computes'][1]['address']
+            zone2 =  self.new_tenant+"_az_"+self.config_dict['computes'][1]['address']
             aggregate2 = self.controller.createAggregate(new_project.id, self.new_user, 
                                                    self.new_password, agg_name=agg2, 
                                                availability_zone=zone2)
@@ -146,7 +151,7 @@ class SameSubnetDiffComputePing(object):
                     print "Launching instance in zone: ", zone_name
                     host1 = self.controller.createInstance(new_project.id, self.new_user, 
                                                    self.new_password, new_network1.get('network').get('id'),
-                                                   "autohost1", key_name=key_pair, availability_zone=zone_name)
+                                                   self.new_inst1, key_name=key_pair, availability_zone=zone_name)
             print "Host1:", host1
         except Exception as e:
             print "Error:", e
@@ -161,16 +166,37 @@ class SameSubnetDiffComputePing(object):
                     print "Launching instance in zone: ", zone_name    
                     host2 = self.controller.createInstance(new_project.id, self.new_user, 
                                                    self.new_password, new_network1.get('network').get('id'),
-                                                   "autohost2", key_name=key_pair, availability_zone=zone_name)
+                                                   self.new_inst2, key_name=key_pair, availability_zone=zone_name)
             print "Host2:", host2
         except Exception as e:
             print "Error:", e
             self.cleanup()
             return 1
         
+        print "Connecting to database"
+        #Connect to database
+        mysql_db = MySqlConnection(self.config_dict)
+        
+        with MySqlConnection(self.config_dict) as mysql_connection:
+            try:
+                data = mysql_db.get_instances(mysql_connection, self.new_inst1)
+                ip_host1 = data[6]
+                print "Ip of "+self.new_inst1+" is:"+ip_host1
+                data = mysql_db.get_instances(mysql_connection, self.new_inst2)
+                ip_host2 = data[6]
+                print "Ip of "+self.new_inst2+" is:"+ip_host2
+                
+            except Exception as e:
+                print "Created Exception: ",e
+                print "Cleanup: " 
+                self.cleanup()
+                return 1   
+                
+
+        
         with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
-            failure_list = ["unreachable","timeout","0 packets received"]
-            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 20.20.30.4")
+            failure_list = ["unreachable","100% packet loss","0 received"]
+            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 "+ip_host2)
             output = "".join(stdout.readlines()).strip()
             error_output = "".join(stderr.readlines()).strip()
             print "Output:", output
@@ -182,7 +208,7 @@ class SameSubnetDiffComputePing(object):
                     self.cleanup()
                     return 1
             
-            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 20.20.30.3")
+            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 "+ip_host1)
             output = "".join(stdout.readlines()).strip()
             error_output = "".join(stderr.readlines()).strip()
             print "Output:", output
@@ -193,8 +219,9 @@ class SameSubnetDiffComputePing(object):
                     print "Ping failed...Failing test case\n"
                     self.cleanup()
                     return 1
-            
-            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 20.20.30.2")
+                
+            dhcp_ip = self.new_subnw1[:-4]+"2"
+            stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 "+dhcp_ip)
             output = "".join(stdout.readlines()).strip()
             error_output = "".join(stderr.readlines()).strip()
             print "Output:", output
@@ -233,7 +260,7 @@ class SameSubnetDiffComputePing(object):
             
         if skip_nova is False:        
             try:
-                agg1 = "auto_agg_"+self.config_dict['computes'][0]['address']    
+                agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['address']    
                 aggregate1 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
                                                          agg_name=agg1)    
                 if not aggregate1:
@@ -243,7 +270,7 @@ class SameSubnetDiffComputePing(object):
             
             try:
                 hosts = nova.hosts.list()
-                zone1 = "auto_az_"+self.config_dict['computes'][0]['address']
+                zone1 = self.new_tenant+"_az_"+self.config_dict['computes'][0]['address']
                 host1 = [h for h in hosts if h.zone == zone1]    
                 if host1 and aggregate1:
                     aggregate1.remove_host(host1[0].host_name)
@@ -258,7 +285,7 @@ class SameSubnetDiffComputePing(object):
                 print "Error:", e
 
             try:
-                agg2 = "auto_agg_"+self.config_dict['computes'][1]['address']    
+                agg2 = self.new_tenant+"_agg_"+self.config_dict['computes'][1]['address']    
                 aggregate2 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
                                                          agg_name=agg2)    
                 if not aggregate2:
@@ -267,7 +294,7 @@ class SameSubnetDiffComputePing(object):
                 print "Error:", e
                 
             try:
-                zone2 = "auto_az_"+self.config_dict['computes'][1]['address']
+                zone2 = self.new_tenant+"_az_"+self.config_dict['computes'][1]['address']
                 host2 = [h for h in hosts if h.zone == zone2]    
                 if host2 and aggregate2:
                     aggregate2.remove_host(host2[0].host_name)
@@ -283,12 +310,12 @@ class SameSubnetDiffComputePing(object):
                 
         if skip_proj is False:    
             try:
-                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst1)
             except Exception as e:
                 print "Error:", e
             
             try:
-                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost2")
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst2)
             except Exception as e:
                 print "Error:", e
             

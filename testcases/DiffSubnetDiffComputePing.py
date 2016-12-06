@@ -28,13 +28,15 @@ class DiffSubnetDiffComputePing(object):
         for compute in config_dict['computes']:
             self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
-        self.new_tenant = "auto"
-        self.new_user = "auto_user"
-        self.new_password = "cisco123"
-        self.new_network1 = "auto_nw1"
-        self.new_subnw1 = "20.20.30.0/24"
-        self.new_network2 = "auto_nw2"
-        self.new_subnw2 = "20.20.40.0/24"
+        self.admin_username = config_dict['controller']['username']
+        self.admin_password = config_dict['controller']['password']
+        self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
+        self.new_user = config_dict['openstack_tenant_details']['tenant_username']
+        self.new_password = config_dict['openstack_tenant_details']['tenant_password']
+        self.new_network1 = config_dict['openstack_tenant_details']['tenant_network1']
+        self.new_subnw1 = config_dict['openstack_tenant_details']['tenant_subnw1']
+        self.new_network2 = config_dict['openstack_tenant_details']['tenant_network2']
+        self.new_subnw2 = config_dict['openstack_tenant_details']['tenant_subnw2']
         self.config_dict = config_dict
              
     # TODO: enforce this

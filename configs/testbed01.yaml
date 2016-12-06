@@ -11,8 +11,8 @@ testbed:
         sys_password: cisco123
 
 tests:
-    - 10
-#    - 1
+#    - 10
+    - 1
 #    - 2
 #    - 3
 #    - 4
@@ -47,4 +47,15 @@ fabric_switch:
     - address: 10.10.2.73
       username: admin
       password: cisco123
+
+openstack_tenant_details:
+    tenant_name:  auto
+    tenant_username:  auto_user
+    tenant_password: cisco123
+    tenant_network1: auto_nw1
+    tenant_subnw1: 10.11.12.0/24
+    tenant_network2: auto_nw2
+    tenant_subnw2: 10.13.14.0/24
+    tenant_inst1: autohost1
+    tenant_inst2: autohost2    
     
