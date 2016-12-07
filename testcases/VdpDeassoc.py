@@ -192,6 +192,7 @@ class VdpDeassoc(object):
     def cleanup(self):                
         print "Cleanup:"
         skip_proj = False
+        skip_nw = False
         
         try:
             new_project = self.controller.getProject(self.new_tenant)
@@ -205,15 +206,17 @@ class VdpDeassoc(object):
             new_network1 = self.controller.getNetwork(self.new_tenant,self.new_network1, 
                                                          self.new_user, self.new_password)
             if not new_network1:
+                skip_nw = True
                 print("Network not found during cleanup")
         except Exception as e:
             print "Error:", e
-            
-        try:
-            self.controller.deleteNetwork(new_network1['id'], self.new_tenant, 
-                                      self.new_user, self.new_password)
-        except Exception as e:
-            print "Error:", e
+        
+        if skip_nw is False:    
+            try:
+                self.controller.deleteNetwork(new_network1['id'], self.new_tenant, 
+                                          self.new_user, self.new_password)
+            except Exception as e:
+                print "Error:", e
         
         try:
             new_user = self.controller.getUser(self.new_user)
