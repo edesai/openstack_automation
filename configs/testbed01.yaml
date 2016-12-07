@@ -9,6 +9,8 @@ testbed:
         password: cisco123
         sys_username: root
         sys_password: cisco123
+        ldap_username: admin
+        ldap_password: cisco123
 
 #tests:
 #    - 10

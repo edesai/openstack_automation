@@ -27,14 +27,19 @@ class CheckDCNM(object):
         for compute in config_dict['computes']:
             self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
-        self.new_tenant = "auto"
-        self.new_user = "auto_user"
-        self.new_password = "cisco123"
-        self.new_network1 = "auto_nw"
-        self.new_subnw1 = "20.20.30.0/24"
+
+        self.admin_username = config_dict['controller']['username']
+        self.admin_password = config_dict['controller']['password']
+        self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
+        self.new_user = config_dict['openstack_tenant_details']['tenant_username']
+        self.new_password = config_dict['openstack_tenant_details']['tenant_password']
+        self.new_network1 = config_dict['openstack_tenant_details']['tenant_network1']
+        self.new_subnw1 = config_dict['openstack_tenant_details']['tenant_subnw1']
         self.dcnm_ip = config_dict['testbed']['dcnm']['address']
         self.dcnm_sys_username = config_dict['testbed']['dcnm']['sys_username']
         self.dcnm_sys_password = config_dict['testbed']['dcnm']['sys_password']
+        self.ldap_username = config_dict['testbed']['dcnm']['ldap_username']
+        self.ldap_password = config_dict['testbed']['dcnm']['ldap_password']
         self.config_dict = config_dict
              
     # TODO: enforce this
@@ -70,7 +75,7 @@ class CheckDCNM(object):
             #Create subnet
             new_subnet = self.controller.createSubnet(new_network1.get('network').get('id'), 
                                                        self.new_tenant,self.new_user, self.new_password,
-                                                       "20.20.30.0/24")
+                                                       self.new_subnw1)
             print "New Subnetwork:", new_subnet
         except Exception as e:
             print "Error:", e                
@@ -80,7 +85,7 @@ class CheckDCNM(object):
         time.sleep(5) #This is because results were different without adding delay
         
         with SSHConnection(address=self.dcnm_ip, username=self.dcnm_sys_username, password = self.dcnm_sys_password) as client:
-            stdin, stdout, stderr = client.exec_command("ldapsearch -x -v -D 'cn=admin,dc=cisco,dc=com' -w 'cisco123' -b 'dc=cisco,dc=com'")
+            stdin, stdout, stderr = client.exec_command("ldapsearch -x -v -D 'cn="+self.ldap_username+",dc=cisco,dc=com' -w '"+self.ldap_password+"' -b 'dc=cisco,dc=com'")
             output = stdout.readlines()
             
             found = False
