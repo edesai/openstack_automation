@@ -10,8 +10,8 @@ testbed:
         sys_username: root
         sys_password: cisco123
 
-tests:
-    - 10
+#tests:
+#    - 10
 #    - 1
 #    - 2
 #    - 3

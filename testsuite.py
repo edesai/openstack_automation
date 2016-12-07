@@ -36,14 +36,15 @@ class BaseTestCase():
 def main():
     parser = argparse.ArgumentParser(description='This is OpenStack TestSuite')
     parser.add_argument('-f','--testbed_file', help = 'Provide the testbed file', required=True)
+    parser.add_argument('--tests', help = 'Provide comma-separated list of test cases to run (e.g 1,2)', required=True)
 
     args = parser.parse_args()
     file_handle = open(args.testbed_file)
     config_dict = yaml.safe_load(file_handle)
     file_handle.close()
     
-    
-    requestedTests = config_dict['tests']
+    requestedTests = args.tests.split(',')
+    #requestedTests = config_dict['tests']
     
     testCasesToRun = []
     for test in requestedTests:
