@@ -25,6 +25,7 @@ tests:
 
 controller:
     address: edesai-ucs-110
+    ip: 172.28.10.110
     username: admin
     password: cisco123
     sys_username: localadmin
@@ -34,9 +35,11 @@ controller:
 
 computes:
     - address: edesai-ucs-110
+      ip: 172.28.10.110
       username: localadmin
       password: cisco123
     - address: edesai-ucs-115
+      ip: 172.28.10.115
       username: localadmin
       password: cisco123
       
