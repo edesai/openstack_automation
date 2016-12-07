@@ -24,7 +24,7 @@ testbed:
 
 
 controller:
-    address: edesai-ucs-110
+    hostname: edesai-ucs-110
     ip: 172.28.10.110
     username: admin
     password: cisco123

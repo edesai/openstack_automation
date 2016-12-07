@@ -21,7 +21,7 @@ class VdpDeassoc(object):
         Constructor
         '''
         self.config_dict = config_dict
-        self.controller = Controller(config_dict['controller']['address'], config_dict['controller']['ip'], config_dict['controller']['username'],
+        self.controller = Controller(config_dict['controller']['hostname'], config_dict['controller']['ip'], config_dict['controller']['username'],
                                     config_dict['controller']['password'], config_dict['controller']['sys_username'])
 
         self.computeHosts = []

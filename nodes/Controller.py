@@ -19,11 +19,11 @@ class Controller(object):
     '''
     classdocs
     '''
-    def __init__(self, address, ip, username, password, sys_username):
+    def __init__(self, hostname, ip, username, password, sys_username):
         '''
         Constructor
         '''
-        self.address = address
+        self.address = hostname
         self.ip = ip
         self.username = username
         self.sys_username = sys_username
