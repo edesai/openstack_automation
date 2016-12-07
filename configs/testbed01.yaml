@@ -11,8 +11,8 @@ testbed:
         sys_password: cisco123
 
 tests:
-#    - 10
-    - 1
+    - 10
+#    - 1
 #    - 2
 #    - 3
 #    - 4

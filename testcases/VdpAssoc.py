@@ -9,6 +9,7 @@ from nodes.Compute import Compute
 from common.Utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
 from common.Uplink import Uplink, UplinkInfo
+import time
 
 
 
@@ -28,49 +29,86 @@ class VdpAssoc(object):
         for compute in config_dict['computes']:
             self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
-        self.new_tenant = "auto"
-        self.new_user = "auto_user"
-        self.new_password = "cisco123"
-        self.new_network = "auto_nw"
-        self.new_subnw = "20.20.30.0/24"
+        self.admin_username = config_dict['controller']['username']
+        self.admin_password = config_dict['controller']['password']
+        self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
+        self.new_user = config_dict['openstack_tenant_details']['tenant_username']
+        self.new_password = config_dict['openstack_tenant_details']['tenant_password']
+        self.new_network1 = config_dict['openstack_tenant_details']['tenant_network1']
+        self.new_subnw1 = config_dict['openstack_tenant_details']['tenant_subnw1']
+        self.new_inst1 = config_dict['openstack_tenant_details']['tenant_inst1']
+        self.new_inst2 = config_dict['openstack_tenant_details']['tenant_inst2']
+        self.config_dict = config_dict
         
     # TODO: enforce this
     def runTest(self):  
           
-        #Create project
-        new_project = self.controller.createProject(self.new_tenant)
+        try:
+            #Create project
+            new_project = self.controller.createProject(self.new_tenant)
+        except Exception as e:
+            print "Error:", e 
+            return 1 
+          
+        try:    
+            #Create user
+            new_user = self.controller.createUser(new_project, 
+                                       new_username = self.new_user, 
+                                       new_password = self.new_password)
+        except Exception as e:
+            print "Error:", e
+            self.cleanup()
+            return 1
         
+        try:    
+            #Create network
+            new_network1 = self.controller.createNetwork(self.new_tenant,self.new_network1, 
+                                          self.new_user, self.new_password)
+            print "New Network:", new_network1  
+        except Exception as e:
+            print "Error:", e
+            self.cleanup() 
+            return 1
+           
+        try:
+            #Create subnet
+            new_subnet = self.controller.createSubnet(new_network1.get('network').get('id'), 
+                                                       self.new_tenant,self.new_user, self.new_password,
+                                                       self.new_subnw1)
+            print "New Subnetwork:", new_subnet
+        except Exception as e:
+            print "Error:", e                
+            self.cleanup()
+            return 1
+          
+        try:
+            #Create key-pair
+            key_pair = self.controller.createKeyPair(new_project.id, self.new_user, 
+                                                   self.new_password)
+        except Exception as e:
+            print "Error:", e                
+            self.cleanup()
+            return 1             
         
-        #Create user
-        new_user = self.controller.createUser(new_project, 
-                                   new_username = self.new_user, 
-                                   new_password = self.new_password)
+        try:    
+            #Create security groups and rules
+            self.controller.createSecurityGroup(new_project.id, self.new_user, 
+                                                   self.new_password)
+        except Exception as e:
+            print "Error:", e
+            self.cleanup()
+            return 1  
         
-        #Create network
-        new_network = self.controller.createNetwork(self.new_tenant,self.new_network, 
-                                      self.new_user, self.new_password)
-        print "New Network:", new_network
-    
-        #Create subnet
-        new_subnet = self.controller.createSubnet(new_network.get('network').get('id'), 
-                                                   self.new_tenant,self.new_user, self.new_password,
-                                                   self.new_subnw)
-        print "New Subnetwork:", new_subnet
-
-        #Create key-pair
-        key_pair = self.controller.createKeyPair(new_project.id, self.new_user, 
-                                               self.new_password)        
-        
-        #Create security groups and rules
-        self.controller.createSecurityGroup(new_project.id, self.new_user, 
-                                               self.new_password)
-        
-        
-        #Create instance
-        host1 = self.controller.createInstance(new_project.id, self.new_user, 
-                                               self.new_password, new_network.get('network').get('id'),
-                                               "autohost1", key_name=key_pair)
-        print "Host1:", host1
+        try:
+            #Create instance
+            host1 = self.controller.createInstance(new_project.id, self.new_user, 
+                                                   self.new_password, new_network1.get('network').get('id'),
+                                                   self.new_inst1, key_name=key_pair, availability_zone=None)
+            print "Host1:", host1
+        except Exception as e:
+            print "Error:", e
+            self.cleanup()
+            return 1
         
 
         print "Connecting to database"
@@ -79,18 +117,15 @@ class VdpAssoc(object):
         
         with MySqlConnection(self.config_dict) as mysql_connection:
             try:
-                data = mysql_db.get_instances(mysql_connection, "autohost1")
+                data = mysql_db.get_instances(mysql_connection, self.new_inst1)
                 print "Host name is:", data[10]
                 host_name = data[10]
             except Exception as e:
                 print "Created Exception: ",e
-                print "Cleanup: "
-                self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
-                self.cleanup(new_network, new_user, new_project)
+                self.cleanup()
                 return 1 #TODO: Return correct retval 
         
-        #print "Check for looping...hostname:", host_name    
+            
         try:
             uplinkInst = Uplink(self.config_dict)
             
@@ -105,41 +140,82 @@ class VdpAssoc(object):
                 error_output = "".join(stderr.readlines()).strip()
                 if error_output:
                     print "Error:", error_output     
-                    print "Cleanup: "
-                    self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-                    self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
-                    self.cleanup(new_network, new_user, new_project)
+                    self.cleanup()
                     return 1 #TODO: Return correct retval
-                
-                
-                inst_str =  str((host1.networks["auto_nw"])[0])
+
+                inst_str =  str((host1.networks[self.new_network1])[0])
                 if inst_str in output:
                     print "Instance found in vdptool cmd output.\n"
                 else:
-                    print "Error:Instance not found in vdptool cmd output.\n", error_output     
-                    print "Cleanup: "
-                    self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-                    self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
-                    self.cleanup(new_network, new_user, new_project)
+                    print "Error:Instance not found in vdptool cmd output.\n", error_output   
+                    self.cleanup()
                     return 1 #TODO: Return correct retval       
         except Exception as e:
             print "Created Exception: ",e
-            print "Cleanup: "
-            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-            self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
-            self.cleanup(new_network, new_user, new_project)
+            self.cleanup()
             return 1 #TODO: Return correct retval    
         
-        print "Cleanup: "
-        self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-        self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, "autohost1")
-        self.cleanup(new_network, new_user, new_project)
+        self.cleanup()
         print "Done"   
         return 0 
     
-    def cleanup(self, new_network, new_user, new_project):                
-        self.controller.deleteNetwork(new_network.get('network').get('id'), self.new_tenant, 
+    def cleanup(self):                
+        print "Cleanup:"
+        skip_proj = False
+        
+        try:
+            new_project = self.controller.getProject(self.new_tenant)
+            if not new_project:
+                print "Project not found during cleanup"
+                skip_proj = True
+        except Exception as e:
+            print "Error:", e
+                
+        if skip_proj is False:    
+            
+            try:
+                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst2)
+            except Exception as e:
+                print "Error:", e
+            
+            try:
+                self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+                time.sleep(5)                
+            except Exception as e:
+                print "Error:", e
+        try:
+            new_network1 = self.controller.getNetwork(self.new_tenant,self.new_network1, 
+                                                         self.new_user, self.new_password)
+            if not new_network1:
+                print("Network not found during cleanup")
+        except Exception as e:
+            print "Error:", e
+            
+        try:
+            self.controller.deleteNetwork(new_network1['id'], self.new_tenant, 
                                       self.new_user, self.new_password)
-        new_user.delete()
-        new_project.delete()
-        return 0    
+        except Exception as e:
+            print "Error:", e
+        
+        try:
+            new_user = self.controller.getUser(self.new_user)
+            if not new_user:
+                print("User not found during cleanup")
+        except Exception as e:
+            print "Error:", e
+            
+        try:
+            new_user.delete()
+        except Exception as e:
+            print "Error:", e
+        
+        if skip_proj is False:    
+            try:
+                new_project.delete()
+            except Exception as e:
+                print "Error:", e
+        
+        print "Done"
+        return 0
+         
+         

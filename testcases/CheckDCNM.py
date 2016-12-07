@@ -76,42 +76,59 @@ class CheckDCNM(object):
             self.cleanup()
             return 1
         
+        time.sleep(5) #This is because results were different without adding delay
+        
         with SSHConnection(address=self.dcnm_ip, username=self.dcnm_sys_username, password = self.dcnm_sys_password) as client:
             stdin, stdout, stderr = client.exec_command("ldapsearch -x -v -D 'cn=admin,dc=cisco,dc=com' -w 'cisco123' -b 'dc=cisco,dc=com'")
-            output = "".join(stdout.readlines()).strip()
+            output = stdout.readlines()
             
+            found = False
+            #print output
             org_str = "orgName: "+self.new_tenant
-            if org_str in output:
-                print "Organization "+self.new_tenant+" created on DCNM"
-            else:
+            for line in output:
+                line = line.strip()
+                if org_str in line:
+                    print "Organization "+self.new_tenant+" created on DCNM"
+                    found = True
+                    break
+            if found is False:
                 "Organization "+self.new_tenant+" NOT found on DCNM" 
                 self.cleanup()
                 return 1
             
+            found = False
             part_str = "vrfName: "+self.new_tenant+":CTX"
-            if part_str in output:
-                print "Partition CTX created on DCNM"
-            else:
+            for line in output:
+                line = line.strip()
+                if part_str in line:
+                    print "Partition CTX created on DCNM"
+                    found = True
+                    break
+            if found is False:        
                 print "Partition CTX NOT found on DCNM"  
                 self.cleanup()
                 return 1
             
-
-            net_str =  "networkName: "+self.new_network1+"\n"
+            found = False
+            net_str =  "networkName: "+self.new_network1
             print net_str
-            if net_str in output:
-                print "Network "+self.new_network1+" created on DCNM"
-            else:
+            for line in output:
+                line = line.strip()
+                if net_str in line:
+                    print "Network "+self.new_network1+" created on DCNM"
+                    found = True
+                    break
+            if found is False:
                 print "Network "+self.new_network1+" NOT found on DCNM"     
                 self.cleanup()
                 return 1
-            
+        
         self.cleanup()
         return 0
     
     def cleanup(self):
         print "Cleanup:"
-        
+        skip_nw = False
         try:
             new_project = self.controller.getProject(self.new_tenant)
             if not new_project:
@@ -124,15 +141,17 @@ class CheckDCNM(object):
                                                          self.new_user, self.new_password)
             if not new_network1:
                 print("Network not found during cleanup")
-        except Exception as e:
-            print "Error:", e
-            
-        try:
-            self.controller.deleteNetwork(new_network1['id'], self.new_tenant, 
-                                      self.new_user, self.new_password)
+                skip_nw = True
         except Exception as e:
             print "Error:", e
         
+        if skip_nw is False:    
+            try:
+                self.controller.deleteNetwork(new_network1['id'], self.new_tenant, 
+                                          self.new_user, self.new_password)
+            except Exception as e:
+                print "Error:", e
+            
         try:
             new_user = self.controller.getUser(self.new_user)
             if not new_user:
@@ -151,5 +170,6 @@ class CheckDCNM(object):
             print "Error:", e
         
         print "Done"
+        
         return 0       
             
