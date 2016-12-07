@@ -107,7 +107,7 @@ class SameSubnetDiffComputePing(object):
         
         hosts = nova.hosts.list()
         hosts_list = [h for h in hosts if h.zone == "nova"]
-        print "Hosts list:", hosts_list
+        #print "Hosts list:", hosts_list
           
         
         try:
@@ -357,3 +357,4 @@ class SameSubnetDiffComputePing(object):
         
         print "Done"
         return 0
+        

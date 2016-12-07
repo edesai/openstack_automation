@@ -13,7 +13,7 @@ class MySqlConnection(object):
         '''
         Constructor
         '''
-        self.host = config_dict['controller']['address']
+        self.host = config_dict['controller']['ip']
         self.user = config_dict['controller']['db']['username']
         self.password = config_dict['controller']['db']['password']
         self.dbName = "cisco_dfa"

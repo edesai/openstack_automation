@@ -103,7 +103,7 @@ class Controller(object):
                                 new_password,
                                 tenant_id = new_tenant.id)
             keystone.roles.add_user_role(new_user, roleToUse, new_tenant)
-            print "Created user:", new_user
+            print "Created user:", new_username
         else:
             print "Role not found !!"
             sys.exit(-1) #TODO: Return specific codes
@@ -124,7 +124,7 @@ class Controller(object):
                    "admin_state_up": "True"}}
         new_network = neutron.create_network(body=body)
         new_network_id = new_network.get('network').get('id')
-        print "Created network:", new_network, "network_id:", new_network_id, "\n"
+        print "Created network:", name, "network_id:", new_network_id, "\n"
         return new_network
     
     def getNetwork(self, tenant, name, new_username, new_password):
@@ -142,7 +142,7 @@ class Controller(object):
         sub_body = {'subnets': [{'cidr': subnet_range,
                           'ip_version': 4, 'network_id': new_network_id}]}
         new_subnet = neutron.create_subnet(body=sub_body)
-        print "Created subnet:", new_subnet
+        print "Created subnet:", subnet_range
         return new_subnet
     
     def deleteNetwork(self, new_network_id, tenant, new_username, new_password):
@@ -168,7 +168,7 @@ class Controller(object):
             print "Waiting for Instance to boot up..."
             time.sleep(100)
 
-            print "Instance :", instance
+            #print "Instance :", instance
             print "Instance:Networks :", instance.networks
             
         else:
