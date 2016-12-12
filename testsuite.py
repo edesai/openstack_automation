@@ -10,7 +10,6 @@ from testcases.DiffSubnetSameComputePing import DiffSubnetSameComputePing
 from testcases.DiffSubnetDiffComputePing import DiffSubnetDiffComputePing
 from testcases.SameSubnetSameComputePing import SameSubnetSameComputePing
 from testcases.CheckDCNM import CheckDCNM
-import sys
 import yaml
 
 
@@ -53,7 +52,7 @@ def main():
             testCasesToRun.append(TEST_CASE_MAP[str(test)](config_dict))
         else:
             print "Invalid test case request: " + str(test)
-    print "TestCases requested by User: ", testCasesToRun
+    print "TestCases requested by User: ", requestedTests
         
     result_list = []
     # Run all the tests
@@ -62,6 +61,6 @@ def main():
         result = testCase.runTest()
         result_list.append(result)
     print "Results are:", result_list
-
+    
 if __name__ == "__main__":
     main()

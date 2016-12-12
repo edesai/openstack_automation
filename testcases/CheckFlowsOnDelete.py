@@ -3,14 +3,12 @@ Created on Oct 25, 2016
 
 @author: edesai
 '''
-from testcases.BaseTest import BaseTest
+
 from nodes.Controller import Controller
 from nodes.Compute import Compute
 import time
-import sys
-from common.Utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
-import re
+from common.OvsFlowsCli import OvsFlowsCli
 
 
 class CheckFlowsOnDelete(object):
@@ -126,52 +124,24 @@ class CheckFlowsOnDelete(object):
                 self.cleanup()
                 return 1 #TODO: Return correct retval
                 
-        with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
-            stdin, stdout, stderr = client.exec_command("sudo ovs-ofctl dump-flows br-int")
-            
-            output = "".join(stdout.readlines())
-            error_output = "".join(stderr.readlines()).strip()
-            if error_output:
-                print "br-int Error:", error_output  
-                self.cleanup()   
-                return 1 #TODO: Return correct retval
-            
-            print "Output:", output
-
-            for line in output.splitlines():
-                line = line.rstrip()
-                search_str = "dl_vlan="+vdp_vlan
-                if search_str in line:
-                    print "Vdp vlan found in br-int flows\n"
-                    break
-
-            if error_output:
-                print "br-int Error:", error_output  
-                self.cleanup()   
-                return 1 #TODO: Return correct retval
-
-
-            stdin, stdout, stderr = client.exec_command("sudo ovs-ofctl dump-flows br-ethd")
-            
-            output = "".join(stdout.readlines())
-            error_output = "".join(stderr.readlines()).strip()
-            if error_output:
-                print "br-ethd Error:", error_output 
-                self.cleanup()    
-                return 1 #TODO: Return correct retval
-            print "Output:", output
-
-            for line in output.splitlines():
-                line = line.rstrip()
-                search_str = "mod_vlan_vid:"+vdp_vlan
-                if search_str in line:
-                    print "Vdp vlan found in br-ethd flows\n"
-                    break
-
-            if error_output:
-                print "br-ethd Error:", error_output 
-                self.cleanup()
-                return 1 #TODO: Return correct retval 
+        time.sleep(15) # wait for flows t be added
+        search_str =  "dl_vlan="+vdp_vlan
+        vdptool_inst = OvsFlowsCli()
+        result = OvsFlowsCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
+                                 self.controller.password, "br-int", search_str)
+        if not result:
+            print "Incorrect ovs flows output.\n"   
+            self.cleanup()
+            return 1 #TODO: Return correct retval
+        
+        search_str = "mod_vlan_vid:"+vdp_vlan
+        vdptool_inst = OvsFlowsCli()
+        result = OvsFlowsCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
+                                 self.controller.password, "br-ethd", search_str)
+        if not result:
+            print "Incorrect ovs flows output.\n"   
+            self.cleanup()
+            return 1 #TODO: Return correct retval 
             
         try:
             self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
@@ -183,47 +153,25 @@ class CheckFlowsOnDelete(object):
             time.sleep(15)
         except Exception as e:
             print "Error:", e
+   
+        search_str =  "dl_vlan="+vdp_vlan
+        vdptool_inst = OvsFlowsCli()
+        result = OvsFlowsCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
+                                 self.controller.password, "br-int", search_str)
+        if result:
+            print "Incorrect ovs flows output. Flows still present. Failing the test case...\n"   
+            self.cleanup()
+            return 1 #TODO: Return correct retval
         
+        search_str = "mod_vlan_vid:"+vdp_vlan
+        vdptool_inst = OvsFlowsCli()
+        result = OvsFlowsCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
+                                 self.controller.password, "br-ethd", search_str)
+        if result:
+            print "Incorrect ovs flows output. Flows still present. Failing the test case...\n"   
+            self.cleanup()
+            return 1 #TODO: Return correct retval 
             
-        with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
-            stdin, stdout, stderr = client.exec_command("sudo ovs-ofctl dump-flows br-int")
-            
-            output = "".join(stdout.readlines())
-            error_output = "".join(stderr.readlines()).strip()
-            if error_output:
-                print "Error:", error_output 
-                self.cleanup()
-                return 1 #TODO: Return correct retval
-            print "Output:", output
-
-            for line in output.splitlines():
-                line = line.rstrip()
-                search_str = "dl_vlan="+vdp_vlan
-                if search_str in line:
-                    print "Flows not deleted from br-int...Failing the test case..."
-                    self.cleanup()
-                    return 1 #TODO: Return correct retval
-                    break
-
-
-            stdin, stdout, stderr = client.exec_command("sudo ovs-ofctl dump-flows br-ethd")
-            
-            output = "".join(stdout.readlines())
-            error_output = "".join(stderr.readlines()).strip()
-            if error_output:
-                print "Error:", error_output  
-                self.cleanup()   
-                return 1 #TODO: Return correct retval
-            print "Output:", output
-
-            for line in output.splitlines():
-                line = line.rstrip()
-                if search_str in line:
-                    print "Flows not deleted from br-ethd...Failing the test case..."
-                    self.cleanup()
-                    return 1 #TODO: Return correct retval
-                    break
-
         self.cleanup()
         print "Done"
         return 0

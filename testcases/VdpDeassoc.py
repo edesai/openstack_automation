@@ -9,6 +9,8 @@ from nodes.Compute import Compute
 from common.Utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
 from common.Uplink import Uplink, UplinkInfo
+from common.VdpToolCli import VdpToolCli
+import time
 
 
 
@@ -133,24 +135,16 @@ class VdpDeassoc(object):
             uplink_info = Uplink.get_info(uplinkInst, host_name)
             print "uplink veth:", uplink_info.vethInterface
             print "remote_port",  uplink_info.remotePort
-            with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
-                stdin, stdout, stderr = client.exec_command("sudo vdptool -t -i "+uplink_info.vethInterface+" -V assoc -c mode=assoc")
-                output = "".join(stdout.readlines())
-                print "VDPTOOL command output:", output
-                error_output = "".join(stderr.readlines()).strip()
-                if error_output:
-                    print "Error:", error_output 
-                    self.cleanup()
-                    return 1 #TODO: Return correct retval
-                
-                
-                inst_str =  str((host1.networks[self.new_network1])[0])
-                if inst_str in output:
-                    print "Making sure instance found in vdptool cmd output before deleting  the instance.\n Found!"
-                else:
-                    print "Error:Instance not found in vdptool cmd output.\n", error_output
-                    self.cleanup()
-                    return 1 #TODO: Return correct retval       
+            
+            inst_str =  str((host1.networks[self.new_network1])[0])
+            vdptool_inst = VdpToolCli()
+            result = VdpToolCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
+                                     self.controller.password, uplink_info.vethInterface, inst_str)
+            if result is False:
+                print "Incorrect vdptool cmd output.\n"   
+                self.cleanup()
+                return 1 #TODO: Return correct retval 
+                   
         except Exception as e:
             print "Created Exception: ",e
             self.cleanup()
@@ -159,24 +153,20 @@ class VdpDeassoc(object):
         try:
             self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
             self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst1)
-            with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
-                stdin, stdout, stderr = client.exec_command("sudo vdptool -t -i "+uplink_info.vethInterface+" -V assoc -c mode=assoc")
-                output = "".join(stdout.readlines())
-                print "VDPTOOL command output:", output
-                error_output = "".join(stderr.readlines()).strip()
-                if error_output:
-                    print "Error:", error_output 
-                    self.cleanup()
-                    return 1 #TODO: Return correct retval
-                
-                inst_str =  str((host1.networks[self.new_network1])[0])
-                if inst_str in output:
-                    print "Error:Instance still found in vdptool cmd output.\n", error_output 
-                    self.cleanup()
-                    return 1 #TODO: Return correct retval  
+            
+            time.sleep(10) #Wait for flows to be deleted
+            
+            inst_str =  str((host1.networks[self.new_network1])[0])
+            vdptool_inst = VdpToolCli()
+            result = VdpToolCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
+                                     self.controller.password, uplink_info.vethInterface, inst_str)
+            if result is True:
+                print "Incorrect vdptool cmd output.\n"   
+                self.cleanup()
+                return 1 #TODO: Return correct retval 
                     
-                else:
-                    print "Instance NOT found in vdptool cmd output. Passing the testcase.\n"
+            else:
+                print "Instance NOT found in vdptool cmd output. Passing the testcase.\n"
                          
                 
         except Exception as e:

@@ -6,9 +6,8 @@ Created on Nov 18, 2016
 from nodes.Controller import Controller
 from nodes.Compute import Compute
 import time
-from common.Utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
-import re
+from common.OvsFlowsCli import OvsFlowsCli
 
 class CheckFlowsOnDeleteOneInst(object):
     '''
@@ -134,49 +133,23 @@ class CheckFlowsOnDeleteOneInst(object):
                 self.cleanup()
                 return 1 #TODO: Return correct retval
                 
-        with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
-            stdin, stdout, stderr = client.exec_command("sudo ovs-ofctl dump-flows br-int")
-            
-            output = "".join(stdout.readlines())
-            error_output = "".join(stderr.readlines()).strip()
-            if error_output:
-                print "br-int Error:", error_output  
-                self.cleanup()   
-                return 1 #TODO: Return correct retval
-            
-            print "Output:", output
-
-            for line in output.splitlines():
-                line = line.rstrip()
-                search_str = "dl_vlan="+vdp_vlan
-                if search_str in line:
-                    print "Vdp vlan found in br-int flows\n"
-                    break
-            if error_output:
-                print "br-int Error:", error_output 
-                self.cleanup()   
-                return 1 #TODO: Return correct retval
-            
-            stdin, stdout, stderr = client.exec_command("sudo ovs-ofctl dump-flows br-ethd")
-            
-            output = "".join(stdout.readlines())
-            error_output = "".join(stderr.readlines()).strip()
-            if error_output:
-                print "br-ethd Error:", error_output 
-                self.cleanup()    
-                return 1 #TODO: Return correct retval
-            print "Output:", output
-
-            for line in output.splitlines():
-                line = line.rstrip()
-                search_str = "mod_vlan_vid:"+vdp_vlan
-                if search_str in line:
-                    print "Vdp vlan found in br-ethd flows\n"
-                    break
-            if error_output:
-                print "br-ethd Error:", error_output 
-                self.cleanup()
-                return 1 #TODO: Return correct retval 
+        search_str =  "dl_vlan="+vdp_vlan
+        vdptool_inst = OvsFlowsCli()
+        result = OvsFlowsCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
+                                 self.controller.password, "br-int", search_str)
+        if not result:
+            print "Incorrect ovs flows output.\n"   
+            self.cleanup()
+            return 1 #TODO: Return correct retval
+        
+        search_str = "mod_vlan_vid:"+vdp_vlan
+        vdptool_inst = OvsFlowsCli()
+        result = OvsFlowsCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
+                                 self.controller.password, "br-ethd", search_str)
+        if not result:
+            print "Incorrect ovs flows output.\n"   
+            self.cleanup()
+            return 1 #TODO: Return correct retval  
             
 
             
@@ -184,40 +157,23 @@ class CheckFlowsOnDeleteOneInst(object):
         print "Deleting only 1 Instance - "+self.new_inst1+"..."
         self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst1)
    
-        with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
-            stdin, stdout, stderr = client.exec_command("sudo ovs-ofctl dump-flows br-int")
-            
-            output = "".join(stdout.readlines())
-            error_output = "".join(stderr.readlines()).strip()
-            if error_output:
-                print "Error:", error_output
-                self.cleanup()
-                return 1 #TODO: Return correct retval
-            print "Output:", output
-
-            for line in output.splitlines():
-                line = line.rstrip()
-                search_str = "dl_vlan="+vdp_vlan
-                if search_str in line:
-                    print "Vdp vlan found in br-int flows. Flows not deleted which is expected\n"
-                    break
- 
-            stdin, stdout, stderr = client.exec_command("sudo ovs-ofctl dump-flows br-ethd")
-            
-            output = "".join(stdout.readlines())
-            error_output = "".join(stderr.readlines()).strip()
-            if error_output:
-                print "Error:", error_output  
-                self.cleanup()   
-                return 1 #TODO: Return correct retval
-            print "Output:", output
-
-            for line in output.splitlines():
-                line = line.rstrip()
-                search_str = "mod_vlan_vid:"+vdp_vlan
-                if search_str in line:
-                    print "Vdp vlan found in br-ethd flows. Flows not deleted which is expected\n"
-                    break
+        search_str =  "dl_vlan="+vdp_vlan
+        vdptool_inst = OvsFlowsCli()
+        result = OvsFlowsCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
+                                 self.controller.password, "br-int", search_str)
+        if not result:
+            print "Incorrect ovs flows output.\n"   
+            self.cleanup()
+            return 1 #TODO: Return correct retval
+        
+        search_str = "mod_vlan_vid:"+vdp_vlan
+        vdptool_inst = OvsFlowsCli()
+        result = OvsFlowsCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
+                                 self.controller.password, "br-ethd", search_str)
+        if not result:
+            print "Incorrect ovs flows output.\n"   
+            self.cleanup()
+            return 1 #TODO: Return correct retval 
 
         
         self.cleanup()
@@ -243,11 +199,6 @@ class CheckFlowsOnDeleteOneInst(object):
             except Exception as e:
                 print "Error:", e
             
-            try:
-                self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-                time.sleep(5)                
-            except Exception as e:
-                print "Error:", e
         try:
             new_network1 = self.controller.getNetwork(self.new_tenant,self.new_network1, 
                                                          self.new_user, self.new_password)
