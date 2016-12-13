@@ -6,11 +6,12 @@ Created on Nov 21, 2016
 
 from nodes.Controller import Controller
 from nodes.Compute import Compute
-from common.Utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
-from common.Uplink import Uplink, UplinkInfo
+from common.Uplink import Uplink
 import time
 from common.VdpToolCli import VdpToolCli
+from common.ReturnValue import ReturnValue
+from common.MySqlDbTables import MySqlDbTables
 
 
 
@@ -47,90 +48,48 @@ class VdpAssoc(object):
         try:
             #Create project
             new_project = self.controller.createProject(self.new_tenant)
-        except Exception as e:
-            print "Error:", e 
-            return 1 
-          
-        try:    
+    
             #Create user
             new_user = self.controller.createUser(new_project, 
                                        new_username = self.new_user, 
                                        new_password = self.new_password)
-        except Exception as e:
-            print "Error:", e
-            self.cleanup()
-            return 1
-        
-        try:    
+    
             #Create network
             new_network1 = self.controller.createNetwork(self.new_tenant,self.new_network1, 
                                           self.new_user, self.new_password)
             print "New Network:", new_network1  
-        except Exception as e:
-            print "Error:", e
-            self.cleanup() 
-            return 1
-           
-        try:
+
             #Create subnet
             new_subnet = self.controller.createSubnet(new_network1.get('network').get('id'), 
                                                        self.new_tenant,self.new_user, self.new_password,
                                                        self.new_subnw1)
             print "New Subnetwork:", new_subnet
-        except Exception as e:
-            print "Error:", e                
-            self.cleanup()
-            return 1
-          
-        try:
+
             #Create key-pair
             key_pair = self.controller.createKeyPair(new_project.id, self.new_user, 
                                                    self.new_password)
-        except Exception as e:
-            print "Error:", e                
-            self.cleanup()
-            return 1             
-        
-        try:    
+    
             #Create security groups and rules
             self.controller.createSecurityGroup(new_project.id, self.new_user, 
                                                    self.new_password)
-        except Exception as e:
-            print "Error:", e
-            self.cleanup()
-            return 1  
-        
-        try:
+
             #Create instance
             host1 = self.controller.createInstance(new_project.id, self.new_user, 
                                                    self.new_password, new_network1.get('network').get('id'),
                                                    self.new_inst1, key_name=key_pair, availability_zone=None)
             print "Host1:", host1
-        except Exception as e:
-            print "Error:", e
-            self.cleanup()
-            return 1
-        
 
-        print "Connecting to database"
-        #Connect to database
-        mysql_db = MySqlConnection(self.config_dict)
-        
-        with MySqlConnection(self.config_dict) as mysql_connection:
-            try:
+            print "Connecting to database"
+            #Connect to database
+            mysql_db = MySqlConnection(self.config_dict)
+            
+            with MySqlConnection(self.config_dict) as mysql_connection:
+            
                 data = mysql_db.get_instances(mysql_connection, self.new_inst1)
-                print "Host name is:", data[10]
-                host_name = data[10]
-            except Exception as e:
-                print "Created Exception: ",e
-                self.cleanup()
-                return 1 #TODO: Return correct retval 
-        
-            
-        try:
+                print "Host name is:", data[MySqlDbTables.INSTANCES_HOST_NAME]
+                host_name = data[MySqlDbTables.INSTANCES_HOST_NAME]
+
             uplinkInst = Uplink(self.config_dict)
-            
-            uplink_info = UplinkInfo()
             uplink_info = Uplink.get_info(uplinkInst, host_name)
             print "uplink veth:", uplink_info.vethInterface
             print "remote_port",  uplink_info.remotePort
@@ -140,18 +99,16 @@ class VdpAssoc(object):
             result = VdpToolCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
                                      self.controller.password, uplink_info.vethInterface, inst_str)
             if result is False:
-                print "Incorrect vdptool cmd output.\n"   
-                self.cleanup()
-                return 1 #TODO: Return correct retval 
+                raise Exception("Incorrect vdptool cmd output.\n")
      
         except Exception as e:
             print "Created Exception: ",e
             self.cleanup()
-            return 1 #TODO: Return correct retval    
+            return ReturnValue.FAILURE    
         
         self.cleanup()
         print "Done"   
-        return 0 
+        return ReturnValue.SUCCESS 
     
     def cleanup(self):                
         print "Cleanup:"
@@ -212,7 +169,6 @@ class VdpAssoc(object):
             except Exception as e:
                 print "Error:", e
         
-        print "Done"
-        return 0
-         
+        print "Done cleaning"
+        return ReturnValue.SUCCESS
          

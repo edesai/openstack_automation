@@ -4,6 +4,7 @@ Created on Oct 26, 2016
 @author: edesai
 '''
 import MySQLdb
+from common.MySqlDbTables import MySqlDbTables
 
 class MySqlConnection(object):
     '''
@@ -35,9 +36,9 @@ class MySqlConnection(object):
         # fetch all of the rows from the query
         data = cursor.fetchall ()
         
-        result = 0
+        result = None
         for row in data :
-            if(row[1] == instance_name):
+            if(row[MySqlDbTables.INSTANCES_INSTANCE_NAME] == instance_name):
                 result = row
                 break
         
@@ -58,9 +59,9 @@ class MySqlConnection(object):
         data = cursor.fetchall ()
         
         print "In get_agent_info_method, printing data:", data
-        result = 0
+        result = None
         for row in data :
-            if(row[0] == host_name):
+            if(row[MySqlDbTables.AGENTS_HOST_NAME] == host_name):
                 result = row
                 break
         
