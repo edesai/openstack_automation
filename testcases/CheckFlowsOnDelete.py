@@ -29,14 +29,21 @@ class CheckFlowsOnDelete(object):
         for compute in config_dict['computes']:
             self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
-        self.admin_username = config_dict['controller']['username']
-        self.admin_password = config_dict['controller']['password']
+        #self.admin_username = config_dict['controller']['username']
+        #self.admin_password = config_dict['controller']['password']
         self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
-        self.new_user = config_dict['openstack_tenant_details']['tenant_username']
-        self.new_password = config_dict['openstack_tenant_details']['tenant_password']
-        self.new_network1 = config_dict['openstack_tenant_details']['tenant_network1']
-        self.new_subnw1 = config_dict['openstack_tenant_details']['tenant_subnw1']
-        self.new_inst1 = config_dict['openstack_tenant_details']['tenant_inst1']
+        
+        if "tenant_username" in config_dict["openstack_tenant_details"] and config_dict['openstack_tenant_details']['tenant_username'] != None:
+            self.new_user = config_dict['openstack_tenant_details']['tenant_username']
+        else:
+            self.new_user = "auto_user"    
+        if "tenant_password" in config_dict["openstack_tenant_details"] and config_dict['openstack_tenant_details']['tenant_password'] != None:
+            self.new_password = config_dict['openstack_tenant_details']['tenant_password']
+        else:
+            self.new_password = "cisco123"
+        self.new_network1 = self.new_tenant+"nw1"
+        self.new_subnw1 = "10.11.12.0/24"
+        self.new_inst1 = self.new_tenant+"inst1"
         self.config_dict = config_dict
         
         

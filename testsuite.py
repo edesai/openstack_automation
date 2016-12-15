@@ -27,11 +27,6 @@ TEST_CASE_MAP = {
     }
 
 
-'''
-class BaseTestCase():
-    def runTest():
-'''    
-
 def main():
     parser = argparse.ArgumentParser(description='This is OpenStack TestSuite')
     parser.add_argument('-f','--testbed_file', help = 'Provide the testbed file', required=True)

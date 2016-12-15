@@ -29,13 +29,22 @@ class CheckDCNM(object):
             self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
 
-        self.admin_username = config_dict['controller']['username']
-        self.admin_password = config_dict['controller']['password']
+        #self.admin_username = config_dict['controller']['username']
+        #self.admin_password = config_dict['controller']['password']
         self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
-        self.new_user = config_dict['openstack_tenant_details']['tenant_username']
-        self.new_password = config_dict['openstack_tenant_details']['tenant_password']
-        self.new_network1 = config_dict['openstack_tenant_details']['tenant_network1']
-        self.new_subnw1 = config_dict['openstack_tenant_details']['tenant_subnw1']
+        
+        if "tenant_username" in config_dict["openstack_tenant_details"] and config_dict['openstack_tenant_details']['tenant_username'] != None:
+            self.new_user = config_dict['openstack_tenant_details']['tenant_username']
+        else:
+            self.new_user = "auto_user"    
+        if "tenant_password" in config_dict["openstack_tenant_details"] and config_dict['openstack_tenant_details']['tenant_password'] != None:
+            self.new_password = config_dict['openstack_tenant_details']['tenant_password']
+        else:
+            self.new_password = "cisco123"
+        self.new_network1 = self.new_tenant+"nw1"
+        self.new_subnw1 = "10.11.12.0/24"
+        self.new_inst1 = self.new_tenant+"inst1"
+        self.new_inst2 = self.new_tenant+"inst2"
         self.dcnm_ip = config_dict['testbed']['dcnm']['address']
         self.dcnm_sys_username = config_dict['testbed']['dcnm']['sys_username']
         self.dcnm_sys_password = config_dict['testbed']['dcnm']['sys_password']

@@ -11,6 +11,7 @@ from common.Utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
 from common.ReturnValue import ReturnValue
 from common.MySqlDbTables import MySqlDbTables
+from common.Ping import Ping
 
 class SameSubnetDiffComputePing(object):
     '''
@@ -28,21 +29,30 @@ class SameSubnetDiffComputePing(object):
         for compute in config_dict['computes']:
             self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
-        self.admin_username = config_dict['controller']['username']
-        self.admin_password = config_dict['controller']['password']
+
+        #self.admin_username = config_dict['controller']['username']
+        #self.admin_password = config_dict['controller']['password']
         self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
-        self.new_user = config_dict['openstack_tenant_details']['tenant_username']
-        self.new_password = config_dict['openstack_tenant_details']['tenant_password']
-        self.new_network1 = config_dict['openstack_tenant_details']['tenant_network1']
-        self.new_subnw1 = config_dict['openstack_tenant_details']['tenant_subnw1']
-        self.new_inst1 = config_dict['openstack_tenant_details']['tenant_inst1']
-        self.new_inst2 = config_dict['openstack_tenant_details']['tenant_inst2']
+        
+        if "tenant_username" in config_dict["openstack_tenant_details"] and config_dict['openstack_tenant_details']['tenant_username'] != None:
+            self.new_user = config_dict['openstack_tenant_details']['tenant_username']
+        else:
+            self.new_user = "auto_user"    
+        if "tenant_password" in config_dict["openstack_tenant_details"] and config_dict['openstack_tenant_details']['tenant_password'] != None:
+            self.new_password = config_dict['openstack_tenant_details']['tenant_password']
+        else:
+            self.new_password = "cisco123"
+        self.new_network1 = self.new_tenant+"nw1"
+        self.new_subnw1 = "10.11.12.0/24"
+        self.new_inst1 = self.new_tenant+"inst1"
+        self.new_inst2 = self.new_tenant+"inst2"
         self.config_dict = config_dict
              
     # TODO: enforce this
     def runTest(self):
-
+    
         try:
+            
             #Create project
             new_project = self.controller.createProject(self.new_tenant)
  
@@ -51,20 +61,20 @@ class SameSubnetDiffComputePing(object):
                 raise Exception("Nova client not found")
     
             #Create user
-            self.controller.createUser(new_project, 
+            new_user = self.controller.createUser(new_project, 
                                        new_username = self.new_user, 
                                        new_password = self.new_password)
-    
-            #Create network
+            
+            #Create 1st network
             new_network1 = self.controller.createNetwork(self.new_tenant,self.new_network1, 
                                           self.new_user, self.new_password)
-            print "New Network:", new_network1  
-
+            print "New Network:", new_network1   
+            
             #Create subnet
-            new_subnet = self.controller.createSubnet(new_network1.get('network').get('id'), 
+            new_subnet1 = self.controller.createSubnet(new_network1.get('network').get('id'), 
                                                        self.new_tenant,self.new_user, self.new_password,
                                                        self.new_subnw1)
-            print "New Subnetwork:", new_subnet
+            print "New Subnetwork:", new_subnet1
 
             #Create key-pair
             key_pair = self.controller.createKeyPair(new_project.id, self.new_user, 
@@ -109,68 +119,42 @@ class SameSubnetDiffComputePing(object):
                 if zone_name == zone1:
                     print "Launching instance in zone: ", zone_name
                     host1 = self.controller.createInstance(new_project.id, self.new_user, 
-                                                   self.new_password, new_network1.get('network').get('id'),
+                                                           self.new_password, new_network1.get('network').get('id'),
                                                    self.new_inst1, key_name=key_pair, availability_zone=zone_name)
             print "Host1:", host1
-
+            
             zones = nova.availability_zones.list()    
             for zone in zones:
                 zone_name = str(zone.zoneName)
                 if zone_name == zone2:
                     print "Launching instance in zone: ", zone_name    
                     host2 = self.controller.createInstance(new_project.id, self.new_user, 
-                                                   self.new_password, new_network1.get('network').get('id'),
+                                                           self.new_password, new_network1.get('network').get('id'),
                                                    self.new_inst2, key_name=key_pair, availability_zone=zone_name)
             print "Host2:", host2
-        
-            print "Connecting to database"
-            #Connect to database
-            mysql_db = MySqlConnection(self.config_dict)
-            
-            with MySqlConnection(self.config_dict) as mysql_connection:
-            
-                data = mysql_db.get_instances(mysql_connection, self.new_inst1)
-                ip_host1 = data[MySqlDbTables.INSTANCES_INSTANCE_IP]
-                print "Ip of "+self.new_inst1+" is:"+ip_host1
-                data = mysql_db.get_instances(mysql_connection, self.new_inst2)
-                ip_host2 = data[MySqlDbTables.INSTANCES_INSTANCE_IP]
-                print "Ip of "+self.new_inst2+" is:"+ip_host2
 
-            with SSHConnection(address=self.controller.ip, username=self.controller.sys_username, password = self.controller.password) as client:
-                failure_list = ["unreachable","100% packet loss","0 received"]
-                stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 "+ip_host2)
-                output = "".join(stdout.readlines()).strip()
-                error_output = "".join(stderr.readlines()).strip()
-                print "Output:", output
-                if error_output:
-                    print "Error:", error_output
-                    raise Exception("Ping failed...Failing test case\n")
-                for word in failure_list:
-                    if word in output:
-                        raise Exception("Ping failed...Failing test case\n")
-                
-                stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 "+ip_host1)
-                output = "".join(stdout.readlines()).strip()
-                error_output = "".join(stderr.readlines()).strip()
-                print "Output:", output
-                if error_output:
-                    print "Error:", error_output
-                    raise Exception("Ping failed...Failing test case\n")
-                for word in failure_list:
-                    if word in output:
-                        raise Exception("Ping failed...Failing test case\n")
-                    
-                dhcp_ip = self.new_subnw1[:-4]+"2"
-                stdin, stdout, stderr = client.exec_command("sudo ip netns exec qdhcp-"+new_network1.get('network').get('id')+" ping -c 3 "+dhcp_ip)
-                output = "".join(stdout.readlines()).strip()
-                error_output = "".join(stderr.readlines()).strip()
-                print "Output:", output
-                if error_output:
-                    print "Error:", error_output
-                    raise Exception("Ping failed...Failing test case\n")
-                for word in failure_list:
-                    if word in output:
-                        raise Exception("Ping failed...Failing test case\n")
+            ip_host1 = str((host1[0].networks[self.new_network1])[0])
+            ip_host2 = str((host2[0].networks[self.new_network1])[0])
+            
+            
+            #Verify Ping using DHCP namespace
+            pingObj = Ping()
+            result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
+                                        new_network1.get('network').get('id'), ip_host2)
+            if not result:
+                raise Exception("Ping failed...Failing test case\n")
+            
+            result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
+                                        new_network1.get('network').get('id'), ip_host1)
+            if not result:
+                raise Exception("Ping failed...Failing test case\n")
+            
+            dhcp_ip = self.new_subnw1[:-4]+"2"
+            result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
+                                        new_network1.get('network').get('id'), dhcp_ip)
+            if not result:
+                raise Exception("Ping failed...Failing test case\n")            
+            
         except Exception as e:
             print "Created Exception: ",e
             self.cleanup()

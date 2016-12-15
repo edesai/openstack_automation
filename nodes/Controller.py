@@ -14,6 +14,7 @@ import sys
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 import time
+from model.Project import Project
 
 class Controller(object):
     '''
@@ -138,7 +139,8 @@ class Controller(object):
         
      
     def createSubnet(self, new_network_id, tenant, new_username, new_password, subnet_range): 
-        neutron = self.get_neutron_client(tenant, new_username, new_password)   
+        #neutron = self.get_neutron_client(tenant, new_username, new_password)   
+        neutron = self.get_neutron_client(tenant, new_username, new_password)
         sub_body = {'subnets': [{'cidr': subnet_range,
                           'ip_version': 4, 'network_id': new_network_id}]}
         new_subnet = neutron.create_subnet(body=sub_body)
@@ -153,30 +155,28 @@ class Controller(object):
 
     '''Create client'''
         
-    def createInstance(self, tenant_id, username, password, network_id, 
-                       hostname, key_name, availability_zone):
-        nova = self.get_nova_client(tenant_id, username, password)
+    def createInstance(self, tenant_id, new_username, new_password, network_id, 
+                       inst_name, key_name, availability_zone=None, count = 1):
+        nova = self.get_nova_client(tenant_id, new_username, new_password)
         print nova.servers.list()
         nics = [{'net-id':network_id}]
         image = nova.images.find(name="cirros-0.3.4-x86_64-uec")
         flavor = nova.flavors.find(name="m1.tiny")
+        instance_list = []
         if image and flavor:
-            instance = nova.servers.create(name=hostname, image=image, 
-                                           flavor=flavor, nics=nics, 
-                                           key_name=key_name.name, 
-                                           availability_zone = availability_zone)
+            for x in range(count):
+                instance = nova.servers.create(name = (inst_name+str(x+1) if (count > 1) else inst_name), 
+                                               image=image,flavor=flavor, nics=nics, 
+                                               key_name=key_name.name, availability_zone = availability_zone)
+                instance_list.append(instance)
             print "Waiting for Instance to boot up..."
             time.sleep(100)
-
-            #print "Instance :", instance
-            print "Instance:Networks :", instance.networks
             
         else:
             print "Error creating instance"
-            print "image:", image, "flavor:", flavor
             sys.exit(-1) #TODO: Return specific codes   
             
-        return instance
+        return instance_list
     
     
     def deleteInstance(self, tenant_id, username, password, hostname):
@@ -194,11 +194,11 @@ class Controller(object):
         return
     
     
-    def createKeyPair(self, tenant_id, username, password):
+    def createKeyPair(self, tenant_id, new_username, new_password):
         with open(os.path.expanduser('~/.ssh/id_rsa.pub')) as f:
             public_key = f.read()
           
-        nova = self.get_nova_client(tenant_id, username, password)
+        nova = self.get_nova_client(tenant_id, new_username, new_password)
         key = nova.keypairs.create('mykey', public_key)
          
         return key
@@ -209,8 +209,8 @@ class Controller(object):
         nova.keypairs.delete('mykey')
         return
         
-    def createSecurityGroup(self, tenant_id, username, password):   
-        nova = self.get_nova_client(tenant_id, username, password)
+    def createSecurityGroup(self, tenant_id, new_username, new_password):   
+        nova = self.get_nova_client(tenant_id, new_username, new_password)
         group = nova.security_groups.find(name="default")
         if not group:
             group = nova.security_groups.create(name="default")
@@ -224,8 +224,8 @@ class Controller(object):
         return group
          
    
-    def createAggregate(self, tenant_id, username, password, agg_name, availability_zone): 
-        nova = self.get_nova_client(tenant_id, username, password)        
+    def createAggregate(self, tenant_id, new_username, new_password, agg_name, availability_zone): 
+        nova = self.get_nova_client(tenant_id, new_username, new_password)        
         aggregate = nova.aggregates.create(agg_name, availability_zone)
         return aggregate
     
