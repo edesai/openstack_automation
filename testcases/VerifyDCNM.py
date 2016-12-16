@@ -9,7 +9,7 @@ import time
 from common.Utils import SSHConnection
 from common.ReturnValue import ReturnValue
 
-class CheckDCNM(object):
+class VerifyDCNM(object):
     '''
     classdocs
     '''
@@ -29,8 +29,6 @@ class CheckDCNM(object):
             self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
 
-        #self.admin_username = config_dict['controller']['username']
-        #self.admin_password = config_dict['controller']['password']
         self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
         
         if "tenant_username" in config_dict["openstack_tenant_details"] and config_dict['openstack_tenant_details']['tenant_username'] != None:

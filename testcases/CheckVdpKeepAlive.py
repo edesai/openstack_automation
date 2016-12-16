@@ -29,8 +29,7 @@ class CheckVdpKeepAlive(object):
         for compute in config_dict['computes']:
             self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
-        #self.admin_username = config_dict['controller']['username']
-        #self.admin_password = config_dict['controller']['password']
+
         self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
         
         if "tenant_username" in config_dict["openstack_tenant_details"] and config_dict['openstack_tenant_details']['tenant_username'] != None:
@@ -47,7 +46,7 @@ class CheckVdpKeepAlive(object):
         self.new_inst2 = self.new_tenant+"inst2"
         self.config_dict = config_dict
         
-    # TODO: enforce this
+    
     def runTest(self):  
           
         try:

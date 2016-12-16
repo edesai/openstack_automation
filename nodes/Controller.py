@@ -14,7 +14,7 @@ import sys
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 import time
-from model.Project import Project
+
 
 class Controller(object):
     '''

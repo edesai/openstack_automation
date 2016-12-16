@@ -31,8 +31,6 @@ class SameSubnetSameComputePing(object):
         for compute in config_dict['computes']:
             self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
         
-        #self.admin_username = config_dict['controller']['username']
-        #self.admin_password = config_dict['controller']['password']
         self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
         
         if "tenant_username" in config_dict["openstack_tenant_details"] and config_dict['openstack_tenant_details']['tenant_username'] != None:
@@ -50,7 +48,6 @@ class SameSubnetSameComputePing(object):
         self.config_dict = config_dict
 
              
-    # TODO: enforce this
     def runTest(self):
         try:
             #Create project
@@ -120,19 +117,6 @@ class SameSubnetSameComputePing(object):
                                                            self.new_inst2, key_name=key_pair, availability_zone=zone_name)
                     print "Host2:", host2
                     break
-            '''    
-            print "Connecting to database"
-            #Connect to database
-            mysql_db = MySqlConnection(self.config_dict)
-            
-            with MySqlConnection(self.config_dict) as mysql_connection:
-            
-                data = mysql_db.get_instances(mysql_connection, self.new_inst1)
-                ip_host1 = data[MySqlDbTables.INSTANCES_INSTANCE_IP]
-                print "Ip of "+self.new_inst1+" is:"+ip_host1
-                data = mysql_db.get_instances(mysql_connection, self.new_inst2)
-                ip_host2 = data[MySqlDbTables.INSTANCES_INSTANCE_IP]
-                print "Ip of "+self.new_inst2+" is:"+ip_host2'''
                 
             ip_host1 = str((host1[0].networks[self.new_network1])[0])
             ip_host2 = str((host2[0].networks[self.new_network1])[0])    

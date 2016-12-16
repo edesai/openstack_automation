@@ -9,7 +9,7 @@ from testcases.CheckVdpKeepAlive import CheckVdpKeepAlive
 from testcases.DiffSubnetSameComputePing import DiffSubnetSameComputePing
 from testcases.DiffSubnetDiffComputePing import DiffSubnetDiffComputePing
 from testcases.SameSubnetSameComputePing import SameSubnetSameComputePing
-from testcases.CheckDCNM import CheckDCNM
+from testcases.VerifyDCNM import VerifyDCNM
 import yaml
 
 
@@ -23,7 +23,7 @@ TEST_CASE_MAP = {
     "7" : VdpAssoc,
     "8" : VdpDeassoc,
     "9" : CheckVdpKeepAlive,
-    "10": CheckDCNM  
+    "10": VerifyDCNM  
     }
 
 
@@ -38,12 +38,10 @@ def main():
     file_handle.close()
     
     requestedTests = args.tests.split(',')
-    #requestedTests = config_dict['tests']
     
     testCasesToRun = []
     for test in requestedTests:
         if TEST_CASE_MAP.has_key(str(test)):
-            #print "Test Case:", test, "\n"
             testCasesToRun.append(TEST_CASE_MAP[str(test)](config_dict))
         else:
             print "Invalid test case request: " + str(test)
