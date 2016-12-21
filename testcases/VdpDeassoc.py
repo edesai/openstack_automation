@@ -30,7 +30,7 @@ class VdpDeassoc(object):
 
         self.computeHosts = []
         for compute in config_dict['computes']:
-            self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
+            self.computeHosts.append(Compute(compute['hostname'], compute['ip'], compute['username'], compute['password']))
 
         self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
         

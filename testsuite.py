@@ -2,6 +2,7 @@
 import argparse
 from testcases.SameSubnetDiffComputePing import SameSubnetDiffComputePing 
 from testcases.CheckFlowsOnDelete import CheckFlowsOnDelete
+from testcases.CheckFlowsOnComputeOnDelete import CheckFlowsOnComputeOnDelete
 from testcases.CheckFlowsOnDeleteOneInst import CheckFlowsOnDeleteOneInst
 from testcases.VdpAssoc import VdpAssoc
 from testcases.VdpDeassoc import VdpDeassoc
@@ -9,9 +10,10 @@ from testcases.CheckVdpKeepAlive import CheckVdpKeepAlive
 from testcases.DiffSubnetSameComputePing import DiffSubnetSameComputePing
 from testcases.DiffSubnetDiffComputePing import DiffSubnetDiffComputePing
 from testcases.SameSubnetSameComputePing import SameSubnetSameComputePing
+from testcases.RestartEnabler import RestartEnabler
+from testcases.RestartLldpad import RestartLldpad
 from testcases.VerifyDCNM import VerifyDCNM
 import yaml
-
 
 TEST_CASE_MAP = {
     "1" : SameSubnetDiffComputePing,
@@ -20,10 +22,13 @@ TEST_CASE_MAP = {
     "4" : DiffSubnetDiffComputePing,
     "5" : CheckFlowsOnDelete,
     "6" : CheckFlowsOnDeleteOneInst,
-    "7" : VdpAssoc,
-    "8" : VdpDeassoc,
-    "9" : CheckVdpKeepAlive,
-    "10": VerifyDCNM  
+    "7" : CheckFlowsOnComputeOnDelete,
+    "8" : VdpAssoc,
+    "9" : VdpDeassoc,
+    "10": VerifyDCNM,
+    "11" : RestartEnabler,
+    "12" : RestartLldpad,
+    "13" : CheckVdpKeepAlive 
     }
 
 
@@ -36,7 +41,7 @@ def main():
     file_handle = open(args.testbed_file)
     config_dict = yaml.safe_load(file_handle)
     file_handle.close()
-    
+
     requestedTests = args.tests.split(',')
     
     testCasesToRun = []

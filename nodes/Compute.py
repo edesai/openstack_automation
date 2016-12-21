@@ -10,10 +10,11 @@ class Compute(object):
     '''
 
 
-    def __init__(self, ip, username, password):
+    def __init__(self, hostname, ip, username, password):
         '''
         Constructor
         '''
+        self.hostname = hostname
         self.ip = ip
         self.username = username
         self.password = password

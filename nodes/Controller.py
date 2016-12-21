@@ -165,7 +165,7 @@ class Controller(object):
         instance_list = []
         if image and flavor:
             for x in range(count):
-                instance = nova.servers.create(name = (inst_name+str(x+1) if (count > 1) else inst_name), 
+                instance = nova.servers.create(name = (inst_name+"-"+str(x+1) if (count > 1) else inst_name), 
                                                image=image,flavor=flavor, nics=nics, 
                                                key_name=key_name.name, availability_zone = availability_zone)
                 instance_list.append(instance)
@@ -179,16 +179,17 @@ class Controller(object):
         return instance_list
     
     
-    def deleteInstance(self, tenant_id, username, password, hostname):
-        nova = self.get_nova_client(tenant_id, username, password)
-        servers_list = nova.servers.list()
-        server_del = hostname
-        
-        for s in servers_list:
-            if s.name == server_del:
-                print("This server %s exists, so delete" % server_del)
-                nova.servers.delete(s)
-                break
+    def deleteInstance(self, tenant_id, username, password, inst_name, count = 1):
+        for x in range(count):
+            nova = self.get_nova_client(tenant_id, username, password)
+            servers_list = nova.servers.list()
+            server_del = inst_name+"-"+str(x+1) if (count > 1) else inst_name
+            
+            for s in servers_list:
+                if s.name == server_del:
+                    print("This server %s exists, so delete" % server_del)
+                    nova.servers.delete(s)
+                    break
             
         time.sleep(50)
         return

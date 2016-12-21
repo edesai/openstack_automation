@@ -1,35 +1,39 @@
 '''
-Created on Sep 22, 2016
+Created on Dec 19, 2016
 
 @author: edesai
 '''
-
 from nodes.Controller import Controller
 from nodes.Compute import Compute
 import time
-from common.Utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
+from common.OvsFlowsCli import OvsFlowsCli
 from common.ReturnValue import ReturnValue
 from common.MySqlDbTables import MySqlDbTables
-from common.Ping import Ping
 
-class SameSubnetDiffComputePing(object):
-    '''
-    classdocs
-    '''
+class CheckFlowsOnComputeOnDelete(object):
+
     def __init__(self, config_dict):
         '''
         Constructor
         '''
-        
+        self.config_dict = config_dict
         self.controller = Controller(config_dict['controller']['hostname'], config_dict['controller']['ip'], config_dict['controller']['username'],
                                     config_dict['controller']['password'], config_dict['controller']['sys_username'])
 
         self.computeHosts = []
         for compute in config_dict['computes']:
             self.computeHosts.append(Compute(compute['hostname'], compute['ip'], compute['username'], compute['password']))
+        '''
+        For this test case, instantiate a compute object which is not the same as controller
+        '''
+           
+        for compute in config_dict['computes']:
+            if compute['hostname'] != config_dict['controller']['hostname']:
+                self.compute = Compute(compute['hostname'], compute['ip'], compute['username'], compute['password'])
         
-
+               
+        
         self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
         
         if "tenant_username" in config_dict["openstack_tenant_details"] and config_dict['openstack_tenant_details']['tenant_username'] != None:
@@ -45,10 +49,10 @@ class SameSubnetDiffComputePing(object):
         self.new_inst1 = self.new_tenant+"inst1"
         self.new_inst2 = self.new_tenant+"inst2"
         self.config_dict = config_dict
-             
+        
     
-    def runTest(self):
-    
+    def runTest(self):  
+         
         try:
             
             #Create project
@@ -130,42 +134,65 @@ class SameSubnetDiffComputePing(object):
                                                            self.new_password, new_network1.get('network').get('id'),
                                                    self.new_inst2, key_name=key_pair, availability_zone=zone_name)
             print "Host2:", host2
+            
+            print "Connecting to database"
+            #Connect to database
+            mysql_db = MySqlConnection(self.config_dict)
+            
+            with MySqlConnection(self.config_dict) as mysql_connection:
+                
+                data = mysql_db.get_instances(mysql_connection, self.new_inst1)
+                print "Instance name:", data[MySqlDbTables.INSTANCES_INSTANCE_NAME], ", Instance IP:", data[MySqlDbTables.INSTANCES_INSTANCE_IP], ", vdp_vlan:", data[MySqlDbTables.INSTANCES_VDP_VLAN] 
+                vdp_vlan = str(data[MySqlDbTables.INSTANCES_VDP_VLAN])   
+        
+            search_str =  "dl_vlan="+vdp_vlan
+            vdptool_inst = OvsFlowsCli()
+            result = OvsFlowsCli.check_output(vdptool_inst, self.compute.ip, self.compute.username, 
+                                     self.compute.password, "br-int", search_str)
+            if not result:
+                raise Exception("Incorrect ovs flows output.\n")   
 
-            ip_host1 = str((host1[0].networks[self.new_network1])[0])
-            ip_host2 = str((host2[0].networks[self.new_network1])[0])
-            
-            
-            #Verify Ping using DHCP namespace
-            pingObj = Ping()
-            result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
-                                        new_network1.get('network').get('id'), ip_host2)
+            search_str = "mod_vlan_vid:"+vdp_vlan
+            vdptool_inst = OvsFlowsCli()
+            result = OvsFlowsCli.check_output(vdptool_inst, self.compute.ip, self.compute.username, 
+                                     self.compute.password, "br-ethd", search_str)
             if not result:
-                raise Exception("Ping failed...Failing test case\n")
+                raise Exception("Incorrect ovs flows output.\n")     
+       
+            #delete one instance on one compute
+            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+            print "Deleting the Instance - "+self.new_inst2+" on "+self.compute.hostname+"..."
+            self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst2)
             
-            result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
-                                        new_network1.get('network').get('id'), ip_host1)
-            if not result:
-                raise Exception("Ping failed...Failing test case\n")
+
+            #Check flows on that same compute
+            search_str =  "dl_vlan="+vdp_vlan
+            vdptool_inst = OvsFlowsCli()
+            result = OvsFlowsCli.check_output(vdptool_inst, self.compute.ip, self.compute.username, 
+                                     self.compute.password, "br-int", search_str)
+            if result:
+                raise Exception("Incorrect ovs flows output.\n")   
             
-            dhcp_ip = self.new_subnw1[:-4]+"2"
-            result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
-                                        new_network1.get('network').get('id'), dhcp_ip)
-            if not result:
-                raise Exception("Ping failed...Failing test case\n")            
-            
+            search_str = "mod_vlan_vid:"+vdp_vlan
+            vdptool_inst = OvsFlowsCli()
+            result = OvsFlowsCli.check_output(vdptool_inst, self.compute.ip, self.compute.username, 
+                                     self.compute.password, "br-ethd", search_str)
+            if result:
+                raise Exception("Incorrect ovs flows output.\n")
+        
         except Exception as e:
-            print "Created Exception: ",e
+            print "Error:", e
             self.cleanup()
             return ReturnValue.FAILURE
         
         self.cleanup()
+        print "Done"
         return ReturnValue.SUCCESS
-        
+                
     def cleanup(self):
-        
         print "Cleanup:"
-        skip_nova = False
         skip_proj = False
+        skip_nova = False
         
         try:
             new_project = self.controller.getProject(self.new_tenant)
@@ -233,22 +260,14 @@ class SameSubnetDiffComputePing(object):
             except Exception as e:
                 print "Error:", e
                 
+                
         if skip_proj is False:    
+            
             try:
                 self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst1)
             except Exception as e:
                 print "Error:", e
             
-            try:
-                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst2)
-            except Exception as e:
-                print "Error:", e
-            
-            try:
-                self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
-                time.sleep(5)                
-            except Exception as e:
-                print "Error:", e
         try:
             new_network1 = self.controller.getNetwork(self.new_tenant,self.new_network1, 
                                                          self.new_user, self.new_password)
@@ -274,12 +293,14 @@ class SameSubnetDiffComputePing(object):
             new_user.delete()
         except Exception as e:
             print "Error:", e
-            
-        try:
-            new_project.delete()
-        except Exception as e:
-            print "Error:", e
         
+        if skip_proj is False:    
+            try:
+                new_project.delete()
+            except Exception as e:
+                print "Error:", e
+            
         print "Done"
         return ReturnValue.SUCCESS
-        
+         
+            

@@ -29,7 +29,7 @@ class DiffSubnetDiffComputePing(object):
 
         self.computeHosts = []
         for compute in config_dict['computes']:
-            self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
+            self.computeHosts.append(Compute(compute['hostname'], compute['ip'], compute['username'], compute['password']))
         
         self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
         if "tenant_username" in config_dict["openstack_tenant_details"] and config_dict['openstack_tenant_details']['tenant_username'] != None:
@@ -100,8 +100,8 @@ class DiffSubnetDiffComputePing(object):
               
         
             #Create an aggregate with availability zone
-            agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['address']
-            zone1 =  self.new_tenant+"_az_"+self.config_dict['computes'][0]['address']
+            agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['hostname']
+            zone1 =  self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']
             aggregate1 = self.controller.createAggregate(new_project.id, self.new_user, 
                                                    self.new_password, agg_name=agg1, 
                                                availability_zone=zone1)
@@ -111,8 +111,8 @@ class DiffSubnetDiffComputePing(object):
             else:
                 raise Exception("No hosts found")
 
-            agg2 = self.new_tenant+"_agg_"+self.config_dict['computes'][1]['address']
-            zone2 =  self.new_tenant+"_az_"+self.config_dict['computes'][1]['address']
+            agg2 = self.new_tenant+"_agg_"+self.config_dict['computes'][1]['hostname']
+            zone2 =  self.new_tenant+"_az_"+self.config_dict['computes'][1]['hostname']
             aggregate2 = self.controller.createAggregate(new_project.id, self.new_user, 
                                                    self.new_password, agg_name=agg2, 
                                                availability_zone=zone2)
@@ -203,7 +203,7 @@ class DiffSubnetDiffComputePing(object):
             
         if skip_nova is False:        
             try:
-                agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['address']    
+                agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['hostname']    
                 aggregate1 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
                                                          agg_name=agg1)    
                 if not aggregate1:
@@ -213,7 +213,7 @@ class DiffSubnetDiffComputePing(object):
             
             try:
                 hosts = nova.hosts.list()
-                zone1 = self.new_tenant+"_az_"+self.config_dict['computes'][0]['address']
+                zone1 = self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']
                 host1 = [h for h in hosts if h.zone == zone1]    
                 if host1 and aggregate1:
                     aggregate1.remove_host(host1[0].host_name)
@@ -228,7 +228,7 @@ class DiffSubnetDiffComputePing(object):
                 print "Error:", e
 
             try:
-                agg2 = self.new_tenant+"_agg_"+self.config_dict['computes'][1]['address']    
+                agg2 = self.new_tenant+"_agg_"+self.config_dict['computes'][1]['hostname']    
                 aggregate2 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
                                                          agg_name=agg2)    
                 if not aggregate2:
@@ -237,7 +237,7 @@ class DiffSubnetDiffComputePing(object):
                 print "Error:", e
                 
             try:
-                zone2 = self.new_tenant+"_az_"+self.config_dict['computes'][1]['address']
+                zone2 = self.new_tenant+"_az_"+self.config_dict['computes'][1]['hostname']
                 host2 = [h for h in hosts if h.zone == zone2]    
                 if host2 and aggregate2:
                     aggregate2.remove_host(host2[0].host_name)

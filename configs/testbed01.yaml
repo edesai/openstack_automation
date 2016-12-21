@@ -23,11 +23,11 @@ controller:
       password: cisco123
 
 computes:
-    - address: edesai-ucs-110
+    - hostname: edesai-ucs-110
       ip: 172.28.10.110
       username: localadmin
       password: cisco123
-    - address: edesai-ucs-115
+    - hostname: edesai-ucs-115
       ip: 172.28.10.115
       username: localadmin
       password: cisco123

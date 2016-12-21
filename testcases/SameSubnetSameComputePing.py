@@ -29,7 +29,7 @@ class SameSubnetSameComputePing(object):
 
         self.computeHosts = []
         for compute in config_dict['computes']:
-            self.computeHosts.append(Compute(compute['address'], compute['username'], compute['password']))
+            self.computeHosts.append(Compute(compute['hostname'], compute['ip'], compute['username'], compute['password']))
         
         self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
         
@@ -85,8 +85,8 @@ class SameSubnetSameComputePing(object):
             hosts = nova.hosts.list()
             hosts_list = [h for h in hosts if h.zone == "nova"]
             aggregate1 = self.controller.createAggregate(new_project.id, self.new_user, 
-                                                   self.new_password, agg_name=self.new_tenant+"_agg_"+self.config_dict['computes'][0]['address'], 
-                                               availability_zone = self.new_tenant+"_az_"+self.config_dict['computes'][0]['address'])
+                                                   self.new_password, agg_name=self.new_tenant+"_agg_"+self.config_dict['computes'][0]['hostname'], 
+                                               availability_zone = self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname'])
             
             if hosts_list:
                 aggregate1.add_host(hosts_list[0].host_name)                
@@ -97,7 +97,7 @@ class SameSubnetSameComputePing(object):
             zones = nova.availability_zones.list()    
             for zone in zones:
                 zone_name = str(zone.zoneName)
-                if zone_name == self.new_tenant+"_az_"+self.config_dict['computes'][0]['address']:
+                if zone_name == self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']:
                     print "Launching instance in zone: ", zone_name 
                     host1 = self.controller.createInstance(new_project.id, self.new_user, 
                                                            self.new_password, new_network1.get('network').get('id'),
@@ -110,7 +110,7 @@ class SameSubnetSameComputePing(object):
             zones = nova.availability_zones.list()    
             for zone in zones:
                 zone_name = str(zone.zoneName)
-                if zone_name == self.new_tenant+"_az_"+self.config_dict['computes'][0]['address']:
+                if zone_name == self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']:
                     print "Launching instance in zone: ", zone_name        
                     host2 = self.controller.createInstance(new_project.id, self.new_user, 
                                                            self.new_password, new_network1.get('network').get('id'),
@@ -173,7 +173,7 @@ class SameSubnetSameComputePing(object):
             
         if skip_nova is False:        
             try:
-                agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['address']    
+                agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['hostname']    
                 aggregate1 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
                                                          agg_name=agg1)    
                 if not aggregate1:
@@ -183,7 +183,7 @@ class SameSubnetSameComputePing(object):
             
             try:
                 hosts = nova.hosts.list()
-                zone1 = self.new_tenant+"_az_"+self.config_dict['computes'][0]['address']
+                zone1 = self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']
                 host1 = [h for h in hosts if h.zone == zone1]    
                 if host1 and aggregate1:
                     aggregate1.remove_host(host1[0].host_name)

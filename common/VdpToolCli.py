@@ -4,6 +4,9 @@ Created on Dec 7, 2016
 @author: edesai
 '''
 from common.Utils import SSHConnection
+from common.MySqlConnection import MySqlConnection
+from common.MySqlDbTables import MySqlDbTables
+from common.Uplink import Uplink
 
 class VdpToolCli(object):
     '''
@@ -35,4 +38,26 @@ class VdpToolCli(object):
             else:
                 print "String not found in vdptool cmd output.\n" 
                 return False #TODO: Return correct retval  
-          
+    
+    def check_uplink_and_output(self, config_dict, inst_ip, instname, host_name):
+        print "Connecting to database"
+        #Connect to database
+        mysql_db = MySqlConnection(config_dict)
+        
+        with MySqlConnection(config_dict) as mysql_connection:
+        
+            data = mysql_db.get_instances(mysql_connection, instname)
+            print "Host name is:", data[MySqlDbTables.INSTANCES_HOST_NAME]
+            host_name = data[MySqlDbTables.INSTANCES_HOST_NAME]
+
+        uplinkInst = Uplink(config_dict)
+        uplink_info = Uplink.get_info(uplinkInst, host_name)
+        print "uplink veth:", uplink_info.vethInterface
+        print "remote_port",  uplink_info.remotePort
+        
+        inst_str =  (inst_ip)
+        
+        vdptool_inst = VdpToolCli()
+        result = VdpToolCli.check_output(vdptool_inst, config_dict['controller']['ip'], config_dict['controller']['sys_username'], 
+                                 config_dict['controller']['password'], uplink_info.vethInterface, inst_str)
+        return result
