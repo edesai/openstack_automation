@@ -54,11 +54,11 @@ class OvsFlowsCli(object):
         
         search_str =  "dl_vlan="+vdp_vlan
         vdptool_inst = OvsFlowsCli()
-        result1 = OvsFlowsCli.check_output(vdptool_inst, self.compute.ip, self.compute.username, 
-                                 self.compute.password, "br-int", search_str)   
+        result1 = OvsFlowsCli.check_output(vdptool_inst, node_ip, node_username, 
+                                 node_password, "br-int", search_str)   
         
         search_str = "mod_vlan_vid:"+vdp_vlan
         vdptool_inst = OvsFlowsCli()
-        result2 = OvsFlowsCli.check_output(vdptool_inst, self.compute.ip, self.compute.username, 
-                                 self.compute.password, "br-ethd", search_str)
+        result2 = OvsFlowsCli.check_output(vdptool_inst, node_ip, node_username, 
+                                 node_password, "br-ethd", search_str)
         return result1 and result2

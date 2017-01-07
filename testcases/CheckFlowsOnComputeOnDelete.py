@@ -159,7 +159,7 @@ class CheckFlowsOnComputeOnDelete(object):
             if not result:
                 raise Exception("Incorrect ovs flows output.\n")     
        
-            #delete one instance on one compute
+            #delete one instance 
             self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
             print "Deleting the Instance - "+self.new_inst2+" on "+self.compute.hostname+"..."
             self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst2)

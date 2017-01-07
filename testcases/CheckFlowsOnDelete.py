@@ -110,6 +110,7 @@ class CheckFlowsOnDelete(object):
             if not result:
                 raise Exception("Incorrect ovs flows output.\n") 
             
+            #Deleting instance and network
             self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
             print "Deleting Instance "+self.new_inst1+"..."
             self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst1)

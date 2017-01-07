@@ -57,7 +57,8 @@ class VdpToolCli(object):
         
         inst_str =  (inst_ip)
         
-        vdptool_inst = VdpToolCli()
-        result = VdpToolCli.check_output(vdptool_inst, config_dict['controller']['ip'], config_dict['controller']['sys_username'], 
-                                 config_dict['controller']['password'], uplink_info.vethInterface, inst_str)
+        for compute in config_dict['computes']:
+            if compute['hostname'] == host_name:
+                vdptool_inst = VdpToolCli()
+                result = VdpToolCli.check_output(vdptool_inst, compute['ip'], compute['username'], compute['password'], uplink_info.vethInterface, inst_str)
         return result

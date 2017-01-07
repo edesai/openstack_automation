@@ -112,6 +112,7 @@ class CheckFlowsOnDeleteOneInst(object):
             if not result:
                 raise Exception("Incorrect ovs flows output.\n")     
        
+            #Verify that flows are not deleted after deleting one instance on Controller+Compute
             self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
             print "Deleting only 1 Instance - "+self.new_inst1+"..."
             self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst1)

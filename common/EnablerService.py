@@ -28,5 +28,5 @@ class EnablerService(object):
             if error_output:
                 raise Exception("Error starting enabler"+process+":", error_output)   
             print "Waiting for things to get settled"
-            time.sleep(120)
+            time.sleep(200)
         return True          

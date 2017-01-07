@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import argparse
+import yaml
 from testcases.SameSubnetDiffComputePing import SameSubnetDiffComputePing 
 from testcases.CheckFlowsOnDelete import CheckFlowsOnDelete
 from testcases.CheckFlowsOnComputeOnDelete import CheckFlowsOnComputeOnDelete
@@ -10,10 +11,11 @@ from testcases.CheckVdpKeepAlive import CheckVdpKeepAlive
 from testcases.DiffSubnetSameComputePing import DiffSubnetSameComputePing
 from testcases.DiffSubnetDiffComputePing import DiffSubnetDiffComputePing
 from testcases.SameSubnetSameComputePing import SameSubnetSameComputePing
-from testcases.RestartEnabler import RestartEnabler
-from testcases.RestartLldpad import RestartLldpad
+from testcases.RestartEnablerServer import RestartEnablerServer
+from testcases.RestartEnablerAgentController import RestartEnablerAgentController
+from testcases.RestartLldpadController import RestartLldpadController
 from testcases.VerifyDCNM import VerifyDCNM
-import yaml
+
 
 TEST_CASE_MAP = {
     "1" : SameSubnetDiffComputePing,
@@ -26,9 +28,10 @@ TEST_CASE_MAP = {
     "8" : VdpAssoc,
     "9" : VdpDeassoc,
     "10": VerifyDCNM,
-    "11" : RestartEnabler,
-    "12" : RestartLldpad,
-    "13" : CheckVdpKeepAlive 
+    "11" : RestartEnablerServer,
+    "12" : RestartEnablerAgentController, 
+    "13" : RestartLldpadController,
+    "14" : CheckVdpKeepAlive 
     }
 
 

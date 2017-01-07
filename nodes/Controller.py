@@ -191,7 +191,7 @@ class Controller(object):
                     nova.servers.delete(s)
                     break
             
-        time.sleep(50)
+        time.sleep(75)
         return
     
     
