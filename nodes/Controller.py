@@ -83,6 +83,7 @@ class Controller(object):
     def getProject(self, tenant_name):
         keystone = self.get_keystone_client(self.username, 'RegionOne')
         tenants = keystone.tenants.list()
+        print "Projects are:", tenants
         for tenant in tenants:
             if tenant.name == tenant_name:
                 return tenant
@@ -136,7 +137,12 @@ class Controller(object):
             if nw['name'] == name:
                 return nw
         return None    
-        
+    
+    def listNetworks(self, tenant, new_username, new_password):   
+        neutron = self.get_neutron_client(tenant, new_username, new_password)
+        networks_dict = neutron.list_networks(retrieve_all=True)
+        networks = networks_dict['networks']
+        return networks 
      
     def createSubnet(self, new_network_id, tenant, new_username, new_password, subnet_range): 
         #neutron = self.get_neutron_client(tenant, new_username, new_password)   
@@ -169,8 +175,10 @@ class Controller(object):
                                                image=image,flavor=flavor, nics=nics, 
                                                key_name=key_name.name, availability_zone = availability_zone)
                 instance_list.append(instance)
-            print "Waiting for Instance to boot up..."
-            time.sleep(100)
+                print "Waiting for Instance to boot up..."
+                time.sleep(100)
+            
+            #time.sleep(100)
             
         else:
             print "Error creating instance"
@@ -191,9 +199,13 @@ class Controller(object):
                     nova.servers.delete(s)
                     break
             
-        time.sleep(75)
+        time.sleep(90)
         return
     
+    def listInstances(self, tenant_id, username, password): 
+        nova = self.get_nova_client(tenant_id, username, password)
+        servers_list = nova.servers.list()
+        return servers_list
     
     def createKeyPair(self, tenant_id, new_username, new_password):
         with open(os.path.expanduser('~/.ssh/id_rsa.pub')) as f:
@@ -236,4 +248,9 @@ class Controller(object):
         for aggregate in aggregates:
             if aggregate.name == agg_name:
                 return aggregate    
-        return None    
+        return None 
+    
+    def listAggregates(self, tenant_id, username, password): 
+        nova = self.get_nova_client(tenant_id, username, password)
+        aggregates = nova.aggregates.list()  
+        return aggregates

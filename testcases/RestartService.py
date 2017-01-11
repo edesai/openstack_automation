@@ -282,29 +282,27 @@ class RestartService(object):
         except Exception as e:
             print "Error:", e
             
-        if skip_nova is False:        
+        if skip_nova is False and skip_proj is False:        
             try:
                 agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['hostname']    
                 aggregate1 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
                                                          agg_name=agg1)    
                 if not aggregate1:
                     print("Aggregate1 not found during cleanup")
-            except Exception as e:
-                print "Error:", e
-            
-            try:
-                hosts = nova.hosts.list()
-                zone1 = self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']
-                host1 = [h for h in hosts if h.zone == zone1]    
-                if host1 and aggregate1:
-                    aggregate1.remove_host(host1[0].host_name)
                 else:
-                    print("Hosts not found during cleanup")
+                    hosts = nova.hosts.list()
+                    zone1 = self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']
+                    host1 = [h for h in hosts if h.zone == zone1]    
+                    if host1 and aggregate1:
+                        aggregate1.remove_host(host1[0].host_name)
+                    else:
+                        print("Hosts not found during cleanup")    
             except Exception as e:
                 print "Error:", e
                 
-            try:             
-                nova.aggregates.delete(aggregate1) 
+            try:
+                if aggregate1:             
+                    nova.aggregates.delete(aggregate1) 
             except Exception as e:
                 print "Error:", e
 
@@ -314,21 +312,19 @@ class RestartService(object):
                                                          agg_name=agg2)    
                 if not aggregate2:
                     print("Aggregate2 not found during cleanup")
-            except Exception as e:
-                print "Error:", e
-                
-            try:
-                zone2 = self.new_tenant+"_az_"+self.config_dict['computes'][1]['hostname']
-                host2 = [h for h in hosts if h.zone == zone2]    
-                if host2 and aggregate2:
-                    aggregate2.remove_host(host2[0].host_name)
                 else:
-                    print("Hosts not found during cleanup")
+                    zone2 = self.new_tenant+"_az_"+self.config_dict['computes'][1]['hostname']
+                    host2 = [h for h in hosts if h.zone == zone2]    
+                    if host2 and aggregate2:
+                        aggregate2.remove_host(host2[0].host_name)
+                    else:
+                        print("Hosts not found during cleanup")    
             except Exception as e:
                 print "Error:", e
                 
-            try:             
-                nova.aggregates.delete(aggregate2) 
+            try: 
+                if aggregate2:            
+                    nova.aggregates.delete(aggregate2) 
             except Exception as e:
                 print "Error:", e
                 
@@ -380,18 +376,16 @@ class RestartService(object):
             new_user = self.controller.getUser(self.new_user)
             if not new_user:
                 print("User not found during cleanup")
+            else:
+                new_user.delete()    
         except Exception as e:
             print "Error:", e
             
-        try:
-            new_user.delete()
-        except Exception as e:
-            print "Error:", e
-            
-        try:
-            new_project.delete()
-        except Exception as e:
-            print "Error:", e
+        if skip_proj is False:
+            try:
+                new_project.delete()
+            except Exception as e:
+                print "Error:", e
         
         print "Done"
         return ReturnValue.SUCCESS
