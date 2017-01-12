@@ -15,6 +15,7 @@ from testcases.RestartEnablerServer import RestartEnablerServer
 from testcases.RestartEnablerAgentController import RestartEnablerAgentController
 from testcases.RestartLldpadController import RestartLldpadController
 from testcases.VerifyDCNM import VerifyDCNM
+from testcases.GenericPingSameSubnetDiffCompute import GenericPingSameSubnetDiffCompute
 
 
 TEST_CASE_MAP = {
@@ -31,7 +32,8 @@ TEST_CASE_MAP = {
     "11" : RestartEnablerServer,
     "12" : RestartEnablerAgentController, 
     "13" : RestartLldpadController,
-    "14" : CheckVdpKeepAlive 
+    "14" : CheckVdpKeepAlive,
+    "15" : GenericPingSameSubnetDiffCompute 
     }
 
 
