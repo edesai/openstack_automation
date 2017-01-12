@@ -156,6 +156,8 @@ class Controller(object):
     def deleteNetwork(self, new_network_id, tenant, new_username, new_password):
         neutron = self.get_neutron_client(tenant, new_username, new_password)
         neutron.delete_network(new_network_id)
+        time.sleep(90)
+        return
 
 
 
@@ -197,9 +199,10 @@ class Controller(object):
                 if s.name == server_del:
                     print("This server %s exists, so delete" % server_del)
                     nova.servers.delete(s)
+                    time.sleep(90)
                     break
             
-        time.sleep(90)
+        #time.sleep(90)
         return
     
     def listInstances(self, tenant_id, username, password): 

@@ -165,15 +165,16 @@ class RestartService(object):
                 raise Exception("Ping failed...Failing test case\n")
                         
             inst_ip_list = []
-            
+            print "before for loop"
             for inst in range(5):
+                "loop:", inst
                 instObj = Instance(ip = str((host1[inst].networks[self.new_network1])[0]), 
                                    instname = str(host1[inst].name), hostname = hosts_list[0].host_name)
                 inst_ip_list.append(instObj)
                 instObj = Instance(ip = str((host2[inst].networks[self.new_network2])[0]), 
                                    instname = str(host2[inst].name), hostname = hosts_list[1].host_name)
                 inst_ip_list.append(instObj)
-
+            print "after for loop"
             for inst in inst_ip_list:
                 #Verify Ping
                 result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
