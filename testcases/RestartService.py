@@ -167,13 +167,17 @@ class RestartService(object):
             inst_ip_list = []
             print "before for loop"
             for inst in range(5):
-                "loop:", inst
+                print "loop:", inst
                 instObj = Instance(ip = str((host1[inst].networks[self.new_network1])[0]), 
                                    instname = str(host1[inst].name), hostname = hosts_list[0].host_name)
+                print "InstObj1:", instObj
                 inst_ip_list.append(instObj)
+                print "inst_ip_list1:", inst_ip_list
                 instObj = Instance(ip = str((host2[inst].networks[self.new_network2])[0]), 
                                    instname = str(host2[inst].name), hostname = hosts_list[1].host_name)
+                print "InstObj2:", instObj
                 inst_ip_list.append(instObj)
+                print "inst_ip_list2:", inst_ip_list
             print "after for loop"
             for inst in inst_ip_list:
                 #Verify Ping
