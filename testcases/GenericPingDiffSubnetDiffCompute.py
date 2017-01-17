@@ -3,15 +3,19 @@ Created on Jan 12, 2017
 
 @author: edesai
 '''
+
 from nodes.Controller import Controller
 from nodes.Compute import Compute
 import time
 from common.ReturnValue import ReturnValue
 from common.Ping import Ping
-class GenericPingSameSubnetDiffCompute(object):
+import math
+
+class GenericPingDiffSubnetDiffCompute(object):
     '''
     classdocs
     '''
+
     def __init__(self, config_dict):
         '''
         Constructor
@@ -38,6 +42,8 @@ class GenericPingSameSubnetDiffCompute(object):
             self.new_password = "cisco123"
         self.new_network1 = self.new_tenant+"nw1"
         self.new_subnw1 = "10.11.12.0/24"
+        self.new_network2 = self.new_tenant+"nw2"
+        self.new_subnw2 = "10.13.14.0/24"
         self.new_inst = self.new_tenant+"inst"
         self.config_dict = config_dict
              
@@ -74,7 +80,18 @@ class GenericPingSameSubnetDiffCompute(object):
                                                        self.new_tenant,self.new_user, self.new_password,
                                                        self.new_subnw1)
             print "New Subnetwork:", new_subnet1
+            
+            #Create 2nd network
+            new_network2 = self.controller.createNetwork(self.new_tenant, self.new_network2, 
+                                          self.new_user, self.new_password)
+            print "New Network:", new_network2   
 
+            #Create subnet
+            new_subnet2 = self.controller.createSubnet(new_network2.get('network').get('id'), 
+                                                       self.new_tenant,self.new_user, self.new_password,
+                                                       self.new_subnw2)
+            print "New Subnetwork:", new_subnet2
+            
             #Create key-pair
             key_pair = self.controller.createKeyPair(new_project.id, self.new_user, 
                                                    self.new_password)
@@ -84,8 +101,10 @@ class GenericPingSameSubnetDiffCompute(object):
                                                    self.new_password)
 
             hosts_list = self.computeHosts
+            nw1_compute_count = math.floor(self.computeCount)
             
-            for host in range(self.computeCount):
+            #Put first half computes on nw1
+            for host in range(int(nw1_compute_count)):
                 #Create an aggregate with availability zone per compute/host
                 agg.append(self.new_tenant+"_agg_" + hosts_list[host].hostname)
                 zone.append(self.new_tenant+"_az_"+ hosts_list[host].hostname)
@@ -101,25 +120,48 @@ class GenericPingSameSubnetDiffCompute(object):
                 print "VM["+str(host)+"]:", vm[host] 
                 ip_vm.append(str((vm[host][0].networks[self.new_network1])[0]))
                 print "IP of VM["+str(host)+"]:", ip_vm[host]
+            
+            for host in range(int(nw1_compute_count), int(self.computeCount - 1)):
+                #Create an aggregate with availability zone per compute/host
+                agg.append(self.new_tenant+"_agg_" + hosts_list[host].hostname)
+                zone.append(self.new_tenant+"_az_"+ hosts_list[host].hostname)
+                aggregate.append(self.controller.createAggregate(new_project.id, self.new_user, 
+                                                       self.new_password, agg_name=agg[host], 
+                                                       availability_zone=zone[host]))
+                aggregate[host].add_host(hosts_list[host].hostname)
+                #Create instance
+                vm.append(self.controller.createInstance(new_project.id, self.new_user, 
+                                                           self.new_password, new_network2.get('network').get('id'),
+                                                           self.new_inst+str(host), key_name=key_pair, availability_zone=zone[host]))            
 
+                print "VM["+str(host)+"]:", vm[host] 
+                ip_vm.append(str((vm[host][0].networks[self.new_network2])[0]))
+                print "IP of VM["+str(host)+"]:", ip_vm[host] 
 
             pingObj = Ping()
-            dhcp_ip = self.new_subnw1[:-4]+"2"
+            dhcp_ip1 = self.new_subnw1[:-4]+"2"
             result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
-                                        new_network1.get('network').get('id'), dhcp_ip)
-
+                                        new_network1.get('network').get('id'), dhcp_ip1)
+            dhcp_ip2 = self.new_subnw2[:-4]+"2"
+            result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
+                                        new_network1.get('network').get('id'), dhcp_ip2)
             if not result:
                 raise Exception("Ping failed...Failing test case\n")
             
-            for host in range(self.computeCount):
+            for host in range(int(nw1_compute_count)):
                 #Verify Ping using DHCP namespace
                 result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
                                             new_network1.get('network').get('id'), ip_vm[host])                
-
                 if not result:
                     raise Exception("Ping failed...Failing test case\n")
-            
-
+                
+            for host in range(int(nw1_compute_count), int(self.computeCount - 1)):
+                #Verify Ping using DHCP namespace
+                result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
+                                            new_network2.get('network').get('id'), ip_vm[host])                
+                if not result:
+                    raise Exception("Ping failed...Failing test case\n")
+                
         except Exception as e:
             print "Created Exception: ",e
             self.cleanup()
@@ -159,10 +201,10 @@ class GenericPingSameSubnetDiffCompute(object):
             except Exception as e:
                 print "Error:", e
             
-
+        nw1_compute_count = math.floor(self.computeCount)
         if skip_nova is False and skip_proj is False:        
             try:
-                for host in range(self.computeCount):
+                for host in range(int(nw1_compute_count)):
                     agg.append(self.new_tenant+"_agg_" + hosts_list[host].hostname) 
                     aggregate.append(self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
                                                                    agg_name=agg[host]))
@@ -173,13 +215,29 @@ class GenericPingSameSubnetDiffCompute(object):
                 print "Error:", e
                 
             try:
-                for host in range(self.computeCount):
+                for host in range(int(nw1_compute_count)):
                     if aggregate[host]:             
                         nova.aggregates.delete(aggregate[host]) 
             except Exception as e:
                 print "Error:", e
-    
-        
+            
+            try:
+                for host in range(int(nw1_compute_count), int(self.computeCount - 1)):
+                    agg.append(self.new_tenant+"_agg_" + hosts_list[host].hostname) 
+                    aggregate.append(self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
+                                                                   agg_name=agg[host]))
+                    zone.append(self.new_tenant+"_az_"+hosts_list[host].hostname)  
+                    aggregate[host].remove_host(hosts_list[host].hostname)   
+ 
+            except Exception as e:
+                print "Error:", e
+                
+            try:
+                for host in range(int(nw1_compute_count), int(self.computeCount - 1)):
+                    if aggregate[host]:             
+                        nova.aggregates.delete(aggregate[host]) 
+            except Exception as e:
+                print "Error:", e
         if skip_proj is False:    
             
             for host in range(self.computeCount):
@@ -205,6 +263,17 @@ class GenericPingSameSubnetDiffCompute(object):
             print "Error:", e
         
         try:
+            new_network2 = self.controller.getNetwork(self.new_tenant, self.new_network2, 
+                                                         self.new_user, self.new_password)
+            if not new_network2:
+                print("Network not found during cleanup")
+            else:
+                self.controller.deleteNetwork(new_network2['id'], self.new_tenant, 
+                                      self.new_user, self.new_password)    
+        except Exception as e:
+            print "Error:", e
+        
+        try:
             new_user = self.controller.getUser(self.new_user)
             if not new_user:
                 print("User not found during cleanup")
@@ -222,3 +291,5 @@ class GenericPingSameSubnetDiffCompute(object):
         print "Done"
         return ReturnValue.SUCCESS
     
+
+        

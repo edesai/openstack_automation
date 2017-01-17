@@ -1,6 +1,8 @@
 #!/usr/bin/python
 import argparse
 import yaml
+import os.path
+
 from testcases.SameSubnetDiffComputePing import SameSubnetDiffComputePing 
 from testcases.CheckFlowsOnDelete import CheckFlowsOnDelete
 from testcases.CheckFlowsOnComputeOnDelete import CheckFlowsOnComputeOnDelete
@@ -16,10 +18,11 @@ from testcases.RestartEnablerAgentController import RestartEnablerAgentControlle
 from testcases.RestartLldpadController import RestartLldpadController
 from testcases.VerifyDCNM import VerifyDCNM
 from testcases.GenericPingSameSubnetDiffCompute import GenericPingSameSubnetDiffCompute
+from testcases.GenericPingDiffSubnetDiffCompute import GenericPingDiffSubnetDiffCompute
 
 
 TEST_CASE_MAP = {
-    "1" : SameSubnetDiffComputePing,
+    "1" : GenericPingSameSubnetDiffCompute,
     "2" : SameSubnetSameComputePing,
     "3" : DiffSubnetSameComputePing,
     "4" : DiffSubnetDiffComputePing,
@@ -32,38 +35,41 @@ TEST_CASE_MAP = {
     "11" : RestartEnablerServer,
     "12" : RestartEnablerAgentController, 
     "13" : RestartLldpadController,
-    "14" : CheckVdpKeepAlive,
-    "15" : GenericPingSameSubnetDiffCompute 
+    "14" : CheckVdpKeepAlive  
     }
 
 
 def main():
-    parser = argparse.ArgumentParser(description='This is OpenStack TestSuite')
-    parser.add_argument('-f','--testbed_file', help = 'Provide the testbed file', required=True)
-    parser.add_argument('--tests', help = 'Provide comma-separated list of test cases to run (e.g 1,2)', required=True)
-
-    args = parser.parse_args()
-    file_handle = open(args.testbed_file)
-    config_dict = yaml.safe_load(file_handle)
-    file_handle.close()
-
-    requestedTests = args.tests.split(',')
+    try:
+        parser = argparse.ArgumentParser(description='This is OpenStack TestSuite')
+        parser.add_argument('-f','--testbed_file', help = 'Provide the testbed file', required=True)
+        parser.add_argument('--tests', help = 'Provide comma-separated list of test cases to run (e.g 1,2)', required=True)
     
-    testCasesToRun = []
-    for test in requestedTests:
-        if TEST_CASE_MAP.has_key(str(test)):
-            testCasesToRun.append(TEST_CASE_MAP[str(test)](config_dict))
-        else:
-            print "Invalid test case request: " + str(test)
-    print "TestCases requested by User: ", requestedTests
+        args = parser.parse_args()
         
-    result_list = []
-    # Run all the tests
-    for testCase in testCasesToRun:
-        print "Running test case: ", testCase
-        result = testCase.runTest()
-        result_list.append(result)
-    print "Results are:", result_list
+        with open(args.testbed_file) as file_handle:
+            config_dict = yaml.safe_load(file_handle)
+        
     
+        requestedTests = args.tests.split(',')
+        
+        testCasesToRun = []
+        for test in requestedTests:
+            if TEST_CASE_MAP.has_key(str(test)):
+                testCasesToRun.append(TEST_CASE_MAP[str(test)](config_dict))
+            else:
+                print "Invalid test case request: " + str(test)
+        print "TestCases requested by User: ", requestedTests
+        
+        result_list = []
+        # Run all the tests
+        for testCase in testCasesToRun:
+            print "Running test case: ", testCase
+            result = testCase.runTest()
+            result_list.append(result)
+        print "Results are:", result_list
+    except Exception as e:
+        print "Exception created", e
+        
 if __name__ == "__main__":
     main()
