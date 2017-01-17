@@ -12,6 +12,8 @@ import time
 from common.VdpToolCli import VdpToolCli
 from common.ReturnValue import ReturnValue
 from common.MySqlDbTables import MySqlDbTables
+from common.CheckStatusOfServices import CheckStatusOfServices
+from constants import resultConstants
 
 
 
@@ -51,13 +53,18 @@ class VdpAssoc(object):
     def runTest(self):  
           
         try:
+            
+            #Basic checks for status of services
+            status_inst = CheckStatusOfServices(self.config_dict)
+            status = CheckStatusOfServices.check(status_inst)
+            if not status:
+                print "Some service/s not running...Unable to run testcase"
+                return resultConstants.RESULT_ABORT
+            
             #Create project
-            new_project = self.controller.createProject(self.new_tenant)
-    
-            #Create user
-            new_user = self.controller.createUser(new_project, 
-                                       new_username = self.new_user, 
-                                       new_password = self.new_password)
+            new_project_user = self.controller.createProjectUser(self.new_tenant, 
+                                                            self.new_user,
+                                                            self.new_password)
     
             #Create network
             new_network1 = self.controller.createNetwork(self.new_tenant,self.new_network1, 
@@ -71,15 +78,15 @@ class VdpAssoc(object):
             print "New Subnetwork:", new_subnet
 
             #Create key-pair
-            key_pair = self.controller.createKeyPair(new_project.id, self.new_user, 
+            key_pair = self.controller.createKeyPair(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password)
     
             #Create security groups and rules
-            self.controller.createSecurityGroup(new_project.id, self.new_user, 
+            self.controller.createSecurityGroup(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password)
 
             #Create instance
-            host1 = self.controller.createInstance(new_project.id, self.new_user, 
+            host1 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password, new_network1.get('network').get('id'),
                                                    self.new_inst1, key_name=key_pair, availability_zone=None)
             print "Host1:", host1
@@ -122,9 +129,9 @@ class VdpAssoc(object):
         skip_nw = False
         
         try:
-            new_project = self.controller.getProject(self.new_tenant)
-            if not new_project:
-                print "Project not found during cleanup"
+            new_project_user = self.controller.getProjectUser(self.new_tenant, self.new_user)
+            if not new_project_user:
+                print "Project/User not found during cleanup"
                 skip_proj = True
         except Exception as e:
             print "Error:", e
@@ -132,12 +139,12 @@ class VdpAssoc(object):
         if skip_proj is False:    
             
             try:
-                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst1)
+                self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, self.new_password, self.new_inst1)
             except Exception as e:
                 print "Error:", e
             
             try:
-                self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+                self.controller.deleteKeyPair(new_project_user.tenant.id, self.new_user, self.new_password)
                 time.sleep(5)                
             except Exception as e:
                 print "Error:", e
@@ -156,25 +163,12 @@ class VdpAssoc(object):
                                           self.new_user, self.new_password)
             except Exception as e:
                 print "Error:", e
-        
+
         try:
-            new_user = self.controller.getUser(self.new_user)
-            if not new_user:
-                print("User not found during cleanup")
+            self.controller.deleteProjectUser(new_project_user)
         except Exception as e:
-            print "Error:", e
-            
-        try:
-            new_user.delete()
-        except Exception as e:
-            print "Error:", e
-        
-        if skip_proj is False:    
-            try:
-                new_project.delete()
-            except Exception as e:
-                print "Error:", e
-        
+            print "Error:", e 
+               
         print "Done cleaning"
         return ReturnValue.SUCCESS
          

@@ -10,6 +10,8 @@ from common.MySqlConnection import MySqlConnection
 from common.OvsFlowsCli import OvsFlowsCli
 from common.ReturnValue import ReturnValue
 from common.MySqlDbTables import MySqlDbTables
+from common.CheckStatusOfServices import CheckStatusOfServices
+from constants import resultConstants
 
 class CheckFlowsOnComputeOnDelete(object):
 
@@ -54,6 +56,12 @@ class CheckFlowsOnComputeOnDelete(object):
     def runTest(self):  
          
         try:
+            #Basic checks for status of services
+            status_inst = CheckStatusOfServices(self.config_dict)
+            status = CheckStatusOfServices.check(status_inst)
+            if not status:
+                print "Some service/s not running...Unable to run testcase"
+                return resultConstants.RESULT_ABORT
             
             #Create project
             new_project = self.controller.createProject(self.new_tenant)
@@ -207,59 +215,34 @@ class CheckFlowsOnComputeOnDelete(object):
             if not nova:
                 print("Nova client not found during cleanup")
                 skip_nova = True
+            else:
+                hosts = nova.hosts.list()    
         except Exception as e:
             print "Error:", e
             
         if skip_nova is False:        
             try:
-                agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['hostname']    
-                aggregate1 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
-                                                         agg_name=agg1)    
-                if not aggregate1:
-                    print("Aggregate1 not found during cleanup")
-            except Exception as e:
-                print "Error:", e
-            
-            try:
-                hosts = nova.hosts.list()
+                agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['hostname']
                 zone1 = self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']
-                host1 = [h for h in hosts if h.zone == zone1]    
-                if host1 and aggregate1:
-                    aggregate1.remove_host(host1[0].host_name)
-                else:
-                    print("Hosts not found during cleanup")
-            except Exception as e:
-                print "Error:", e
                 
-            try:             
-                nova.aggregates.delete(aggregate1) 
+                host1 = [h for h in hosts if h.zone == zone1]    
+                hosts_list1 = []
+                hosts_list1.append(host1)
+                self.controller.deleteAggregate(new_project.id, self.new_user, self.new_password, agg1, hosts_list1)
+            
             except Exception as e:
-                print "Error:", e
+                print "Error:", e 
 
             try:
-                agg2 = self.new_tenant+"_agg_"+self.config_dict['computes'][1]['hostname']    
-                aggregate2 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
-                                                         agg_name=agg2)    
-                if not aggregate2:
-                    print("Aggregate2 not found during cleanup")
-            except Exception as e:
-                print "Error:", e
-                
-            try:
+                agg2 = self.new_tenant+"_agg_"+self.config_dict['computes'][1]['hostname'] 
                 zone2 = self.new_tenant+"_az_"+self.config_dict['computes'][1]['hostname']
-                host2 = [h for h in hosts if h.zone == zone2]    
-                if host2 and aggregate2:
-                    aggregate2.remove_host(host2[0].host_name)
-                else:
-                    print("Hosts not found during cleanup")
-            except Exception as e:
-                print "Error:", e
+                host2 = [h for h in hosts if h.zone == zone2]
+                hosts_list2 = []
+                hosts_list2.append(host2)
+                self.controller.deleteAggregate(new_project.id, self.new_user, self.new_password, agg2, hosts_list2)
                 
-            try:             
-                nova.aggregates.delete(aggregate2) 
             except Exception as e:
-                print "Error:", e
-                
+                print "Error:", e    
                 
         if skip_proj is False:    
             

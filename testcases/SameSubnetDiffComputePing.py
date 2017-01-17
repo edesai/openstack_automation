@@ -13,6 +13,8 @@ from common.ReturnValue import ReturnValue
 from common.MySqlDbTables import MySqlDbTables
 from common.Ping import Ping
 from common.GeneralCleanup import GeneralCleanup
+from common.CheckStatusOfServices import CheckStatusOfServices
+from constants import resultConstants
 
 class SameSubnetDiffComputePing(object):
     '''
@@ -54,7 +56,14 @@ class SameSubnetDiffComputePing(object):
         cleanup.start()
         return'''
         try:
-
+            
+            #Basic checks for status of services
+            status_inst = CheckStatusOfServices(self.config_dict)
+            status = CheckStatusOfServices.check(status_inst)
+            if not status:
+                print "Some service/s not running...Unable to run testcase"
+                return resultConstants.RESULT_ABORT
+            
             #Create project
             new_project = self.controller.createProject(self.new_tenant)
             

@@ -28,3 +28,17 @@ class LldpadService(object):
             print "Waiting for things to get settled"
             time.sleep(200)
         return True          
+    
+    def check_status(self):
+        with SSHConnection(address=self.ip, username = self.username, password = self.password) as client:
+            stdin, stdout, stderr = client.exec_command("sudo service lldpad status")
+            output = "".join(stdout.readlines())
+            error_output = "".join(stderr.readlines()).strip()
+            if error_output:
+                raise Exception("Error while checking status of lldapd")
+            failure_list = ["stop/waiting"]  
+            for word in failure_list:
+                if word in output:
+                    print ("Alert: Process lldpad not running")
+                    return False
+        return True

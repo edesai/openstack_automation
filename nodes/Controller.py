@@ -15,7 +15,10 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 import time
 
-
+class ProjectUser:
+    tenant = ''
+    user = ''
+    
 class Controller(object):
     '''
     classdocs
@@ -112,6 +115,7 @@ class Controller(object):
 
         return new_user
     
+                
     def getUser(self, user_name):
         keystone = self.get_keystone_client(self.username, 'RegionOne')
         users = keystone.users.list() 
@@ -120,6 +124,69 @@ class Controller(object):
                 return user    
         return None
     
+    def createProjectUser(self, tenant_name, new_username, new_password):
+        keystone = self.get_keystone_client(self.username, 'RegionOne')
+        # Creating tenant/project
+        new_tenant = keystone.tenants.create(tenant_name,
+                                             description="Automation tenant",
+                                             enabled=True)
+        # Creating new user
+        roleToUse = None
+        for role in keystone.roles.list():
+            if role.name == 'admin':
+                print "Using admin role:"
+                roleToUse = role
+                break
+
+        #new_user = None
+        if roleToUse:
+            new_user = keystone.users.create(new_username,
+                                new_password,
+                                tenant_id = new_tenant.id)
+            keystone.roles.add_user_role(new_user, roleToUse, new_tenant)
+            print "Created user:", new_username
+        else:
+            print "Role not found !!"
+            sys.exit(-1) #TODO: Return specific codes
+        
+        projUserInst = ProjectUser()
+        projUserInst.tenant = new_tenant
+        projUserInst.user = new_user
+        
+        return projUserInst
+            
+    def getProjectUser(self, tenant_name, username):
+        tenant_found = None
+        keystone = self.get_keystone_client(self.username, 'RegionOne')
+        tenants = keystone.tenants.list()
+        print "Projects are:", tenants
+        for tenant in tenants:
+            if tenant.name == tenant_name:
+                tenant_found = tenant
+        if tenant_found == None:
+            print "Project not found"
+            return None
+        users = keystone.users.list() 
+        for user in users:
+            if user.name == username:
+                user_found = user 
+        if user_found == None:
+            print "User not found !!" 
+            return None              
+        projUserInst = ProjectUser()
+        projUserInst.tenant = tenant_found
+        projUserInst.user = user_found
+        return projUserInst
+    
+    def deleteProjectUser(self, project_user):
+        try:
+            user = self.controller.getUser(project_user.user)
+            user.delete()
+            tenant = self.controller.getProject(project_user.tenant)
+            tenant.delete()
+        except Exception as e:
+            raise Exception("Exception during delete of project/user")
+        
     def createNetwork(self, tenant, name, new_username, new_password):
         neutron = self.get_neutron_client(tenant, new_username, new_password)
         body = {"network": {"name": name,
@@ -244,6 +311,26 @@ class Controller(object):
         nova = self.get_nova_client(tenant_id, new_username, new_password)        
         aggregate = nova.aggregates.create(agg_name, availability_zone)
         return aggregate
+    
+    def deleteAggregate(self, tenant_id, username, password, 
+                        agg_name, host_list):
+        try:
+            nova = self.get_nova_client(tenant_id, username, password)
+            aggregate = self.controller.getAggregate(tenant_id, username, password,
+                                             agg_name=agg_name)
+            if not aggregate:
+                print "Aggregate"+aggregate+"not found"
+                return False
+            else:
+                for host in host_list:
+                    aggregate.remove_host(host.host_name)
+                    nova.aggregates.delete(agg_name)
+            return True
+        except Exception as e:
+            print "Error:", e
+                        
+                
+            
     
     def getAggregate(self, tenant_id, username, password, agg_name):
         nova = self.get_nova_client(tenant_id, username, password)

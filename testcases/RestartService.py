@@ -13,6 +13,8 @@ from common.OvsFlowsCli import OvsFlowsCli
 from common.VdpToolCli import VdpToolCli
 from common.EnablerService import EnablerService
 from common.LldpadService import LldpadService
+from common.CheckStatusOfServices import CheckStatusOfServices
+from constants import resultConstants
 
 class RestartService(object):
     '''
@@ -51,6 +53,14 @@ class RestartService(object):
         print "Service to be restarted is:", service
         
         try:
+            
+            #Basic checks for status of services
+            status_inst = CheckStatusOfServices(self.config_dict)
+            status = CheckStatusOfServices.check(status_inst)
+            if not status:
+                print "Some service/s not running...Unable to run testcase"
+                return resultConstants.RESULT_ABORT
+            
             #Create project
             new_project = self.controller.createProject(self.new_tenant)
             

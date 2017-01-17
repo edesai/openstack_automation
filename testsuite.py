@@ -19,6 +19,7 @@ from testcases.RestartLldpadController import RestartLldpadController
 from testcases.VerifyDCNM import VerifyDCNM
 from testcases.GenericPingSameSubnetDiffCompute import GenericPingSameSubnetDiffCompute
 from testcases.GenericPingDiffSubnetDiffCompute import GenericPingDiffSubnetDiffCompute
+from constants import resultConstants
 
 
 TEST_CASE_MAP = {
@@ -66,10 +67,16 @@ def main():
         for testCase in testCasesToRun:
             print "Running test case: ", testCase
             result = testCase.runTest()
-            result_list.append(result)
+            if result == resultConstants.RESULT_ABORT:
+                result_list.append(result)
+                raise Exception("Aborting testsuite")
+            else:
+                result_list.append(result)
         print "Results are:", result_list
+        
     except Exception as e:
         print "Exception created", e
-        
+        print "Results are:", result_list   
+         
 if __name__ == "__main__":
     main()

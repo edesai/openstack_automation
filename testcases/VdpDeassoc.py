@@ -12,6 +12,8 @@ from common.VdpToolCli import VdpToolCli
 import time
 from common.ReturnValue import ReturnValue
 from common.MySqlDbTables import MySqlDbTables
+from common.CheckStatusOfServices import CheckStatusOfServices
+from constants import resultConstants
  
 
 
@@ -53,6 +55,14 @@ class VdpDeassoc(object):
           
           
         try:
+            
+            #Basic checks for status of services
+            status_inst = CheckStatusOfServices(self.config_dict)
+            status = CheckStatusOfServices.check(status_inst)
+            if not status:
+                print "Some service/s not running...Unable to run testcase"
+                return resultConstants.RESULT_ABORT
+            
             #Create project
             new_project = self.controller.createProject(self.new_tenant)
     
