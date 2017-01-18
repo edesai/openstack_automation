@@ -127,7 +127,6 @@ class VdpAssoc(object):
             print "Error:", e
                 
         if skip_proj is False:    
-            
             try:
                 self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, self.new_password, self.new_inst1)
             except Exception as e:

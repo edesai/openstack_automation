@@ -12,6 +12,7 @@ from common.ReturnValue import ReturnValue
 from common.MySqlDbTables import MySqlDbTables
 from common.CheckStatusOfServices import CheckStatusOfServices
 from constants import resultConstants
+import math
 
 class CheckFlowsOnComputeOnDelete(object):
 
@@ -63,59 +64,43 @@ class CheckFlowsOnComputeOnDelete(object):
                 print "Some service/s not running...Unable to run testcase"
                 return resultConstants.RESULT_ABORT
             
-            #Create project
-            new_project = self.controller.createProject(self.new_tenant)
- 
-            nova = self.controller.get_nova_client(new_project.id, self.new_user, self.new_password)  
-            if not nova:
-                raise Exception("Nova client not found")
-    
-            #Create user
-            new_user = self.controller.createUser(new_project, 
-                                       new_username = self.new_user, 
-                                       new_password = self.new_password)
+            #Create project & user
+            new_project_user = self.controller.createProjectUser(self.new_tenant, 
+                                                            self.new_user,
+                                                            self.new_password)
             
-            #Create 1st network
-            new_network1 = self.controller.createNetwork(self.new_tenant,self.new_network1, 
-                                          self.new_user, self.new_password)
-            print "New Network:", new_network1   
-            
-            #Create subnet
-            new_subnet1 = self.controller.createSubnet(new_network1.get('network').get('id'), 
-                                                       self.new_tenant,self.new_user, self.new_password,
-                                                       self.new_subnw1)
-            print "New Subnetwork:", new_subnet1
+            #Create network and subnetwork
+            new_network_inst1 = self.controller.createNetworkSubNetwork(self.new_tenant,self.new_network1,  
+                                          self.new_subnw1, self.new_user, self.new_password)
 
-            #Create key-pair
-            key_pair = self.controller.createKeyPair(new_project.id, self.new_user, 
-                                                   self.new_password)
-    
-            #Create security groups and rules
-            self.controller.createSecurityGroup(new_project.id, self.new_user, 
+            #Create key-pair & security groups and rules
+            keypair_secgrp = self.controller.createKeyPairSecurityGroup(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password)
   
-        
-            hosts = nova.hosts.list()
-            hosts_list = [h for h in hosts if h.zone == "nova"]
-            #print "Hosts list:", hosts_list
-
+            nova = self.controller.get_nova_client(new_project_user.tenant.id, self.new_user, self.new_password)  
+            if not nova:
+                raise Exception("Nova client not found")
+            
+            
+            hosts_list = self.computeHosts
+            
             #Create an aggregate with availability zone
-            agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['hostname']
-            zone1 =  self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']
-            aggregate1 = self.controller.createAggregate(new_project.id, self.new_user, 
+            agg1 = self.new_tenant+"_agg_"+ hosts_list[0].hostname
+            zone1 =  self.new_tenant+"_az_"+ hosts_list[0].hostname
+            aggregate1 = self.controller.createAggregate(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password, agg_name=agg1, 
-                                               availability_zone=zone1)
+                                                   availability_zone=zone1)
             
             if hosts_list:
                 aggregate1.add_host(hosts_list[0].host_name)                
             else:
                 raise Exception("No hosts found")
 
-            agg2 = self.new_tenant+"_agg_"+self.config_dict['computes'][1]['hostname']
-            zone2 =  self.new_tenant+"_az_"+self.config_dict['computes'][1]['hostname']
-            aggregate2 = self.controller.createAggregate(new_project.id, self.new_user, 
+            agg2 = self.new_tenant+"_agg_"+ hosts_list[1].hostname
+            zone2 =  self.new_tenant+"_az_"+ hosts_list[1].hostname
+            aggregate2 = self.controller.createAggregate(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password, agg_name=agg2, 
-                                               availability_zone=zone2)
+                                                   availability_zone=zone2)
             
             if hosts_list:
                 aggregate2.add_host(hosts_list[1].host_name)                
@@ -128,9 +113,9 @@ class CheckFlowsOnComputeOnDelete(object):
                 zone_name = str(zone.zoneName)
                 if zone_name == zone1:
                     print "Launching instance in zone: ", zone_name
-                    host1 = self.controller.createInstance(new_project.id, self.new_user, 
-                                                           self.new_password, new_network1.get('network').get('id'),
-                                                   self.new_inst1, key_name=key_pair, availability_zone=zone_name)
+                    host1 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
+                                                           self.new_password, new_network_inst1.network.get('network').get('id'),
+                                                   self.new_inst1, key_name=keypair_secgrp.keypair, availability_zone=zone_name)
             print "Host1:", host1
             
             zones = nova.availability_zones.list()    
@@ -138,10 +123,11 @@ class CheckFlowsOnComputeOnDelete(object):
                 zone_name = str(zone.zoneName)
                 if zone_name == zone2:
                     print "Launching instance in zone: ", zone_name    
-                    host2 = self.controller.createInstance(new_project.id, self.new_user, 
-                                                           self.new_password, new_network1.get('network').get('id'),
-                                                   self.new_inst2, key_name=key_pair, availability_zone=zone_name)
+                    host2 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
+                                                           self.new_password, new_network_inst1.get('network').get('id'),
+                                                   self.new_inst2, key_name=keypair_secgrp.keypair, availability_zone=zone_name)
             print "Host2:", host2
+            
             
             print "Connecting to database"
             #Connect to database
@@ -168,12 +154,12 @@ class CheckFlowsOnComputeOnDelete(object):
                 raise Exception("Incorrect ovs flows output.\n")     
        
             #delete one instance 
-            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+            self.controller.deleteKeyPair(new_project_user.tenant.id, self.new_user, self.new_password)
             print "Deleting the Instance - "+self.new_inst2+" on "+self.compute.hostname+"..."
-            self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst2)
+            self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, self.new_password, self.new_inst2)
             
 
-            #Check flows on that same compute
+            #Check flows on that same compute (should not exist)
             search_str =  "dl_vlan="+vdp_vlan
             vdptool_inst = OvsFlowsCli()
             result = OvsFlowsCli.check_output(vdptool_inst, self.compute.ip, self.compute.username, 
@@ -201,45 +187,35 @@ class CheckFlowsOnComputeOnDelete(object):
         print "Cleanup:"
         skip_proj = False
         skip_nova = False
-        
+        hosts_list = []
         try:
-            new_project = self.controller.getProject(self.new_tenant)
-            if not new_project:
-                print "Project not found during cleanup"
+            new_project_user = self.controller.getProjectUser(self.new_tenant, self.new_user)
+            if not new_project_user:
+                print "Project/User not found during cleanup"
                 skip_proj = True
         except Exception as e:
             print "Error:", e
-        
-        try: 
-            nova = self.controller.get_nova_client(new_project.id, self.new_user, self.new_password)  
-            if not nova:
-                print("Nova client not found during cleanup")
-                skip_nova = True
-            else:
-                hosts = nova.hosts.list()    
-        except Exception as e:
-            print "Error:", e
-            
+               
+        hosts_list = self.computeHosts    
         if skip_nova is False:        
             try:
-                agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['hostname']
-                zone1 = self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']
-                
-                host1 = [h for h in hosts if h.zone == zone1]    
+                agg1 = self.new_tenant+"_agg_"+ hosts_list[0].hostname
+                    
                 hosts_list1 = []
-                hosts_list1.append(host1)
-                self.controller.deleteAggregate(new_project.id, self.new_user, self.new_password, agg1, hosts_list1)
+                hosts_list1.append(hosts_list[0])
+                self.controller.deleteAggregate(new_project_user.tenant.id, self.new_user, 
+                                                self.new_password, agg1, hosts_list1)
             
             except Exception as e:
                 print "Error:", e 
 
             try:
-                agg2 = self.new_tenant+"_agg_"+self.config_dict['computes'][1]['hostname'] 
-                zone2 = self.new_tenant+"_az_"+self.config_dict['computes'][1]['hostname']
-                host2 = [h for h in hosts if h.zone == zone2]
+                agg2 = self.new_tenant+"_agg_"+hosts_list[1].hostname 
+                
                 hosts_list2 = []
-                hosts_list2.append(host2)
-                self.controller.deleteAggregate(new_project.id, self.new_user, self.new_password, agg2, hosts_list2)
+                hosts_list2.append(hosts_list[1])
+                self.controller.deleteAggregate(new_project_user.tenant.id, self.new_user,
+                                                self.new_password, agg2, hosts_list2)
                 
             except Exception as e:
                 print "Error:", e    
@@ -247,41 +223,21 @@ class CheckFlowsOnComputeOnDelete(object):
         if skip_proj is False:    
             
             try:
-                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst1)
+                self.controller.deleteInstance(new_project_user.tenant.id, self.new_user,
+                                               self.new_password, self.new_inst1)
             except Exception as e:
                 print "Error:", e
-            
+        
         try:
-            new_network1 = self.controller.getNetwork(self.new_tenant,self.new_network1, 
-                                                         self.new_user, self.new_password)
-            if not new_network1:
-                print("Network not found during cleanup")
-        except Exception as e:
-            print "Error:", e
-            
-        try:
-            self.controller.deleteNetwork(new_network1['id'], self.new_tenant, 
+            self.controller.deleteNetwork(self.controller, self.new_network1, self.new_tenant, 
                                       self.new_user, self.new_password)
         except Exception as e:
             print "Error:", e
         
         try:
-            new_user = self.controller.getUser(self.new_user)
-            if not new_user:
-                print("User not found during cleanup")
+            self.controller.deleteProjectUser(self.controller, new_project_user)
         except Exception as e:
-            print "Error:", e
-            
-        try:
-            new_user.delete()
-        except Exception as e:
-            print "Error:", e
-        
-        if skip_proj is False:    
-            try:
-                new_project.delete()
-            except Exception as e:
-                print "Error:", e
+            print "Error:", e 
             
         print "Done"
         return ReturnValue.SUCCESS

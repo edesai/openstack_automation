@@ -120,6 +120,7 @@ class GenericPingDiffSubnetDiffCompute(object):
                                                        self.new_password, agg_name=agg[host], 
                                                        availability_zone=zone[host]))
                 aggregate[host].add_host(hosts_list[host].hostname)
+                
                 #Create instance
                 vm.append(self.controller.createInstance(new_project.id, self.new_user, 
                                                            self.new_password, new_network1.get('network').get('id'),
