@@ -52,8 +52,8 @@ class VdpAssoc(object):
     
     def runTest(self):  
           
-        try:
-            
+        try:   
+                        
             #Basic checks for status of services
             status_inst = CheckStatusOfServices(self.config_dict)
             status = CheckStatusOfServices.check(status_inst)
@@ -61,34 +61,24 @@ class VdpAssoc(object):
                 print "Some service/s not running...Unable to run testcase"
                 return resultConstants.RESULT_ABORT
             
-            #Create project
+            #Create project & user
             new_project_user = self.controller.createProjectUser(self.new_tenant, 
                                                             self.new_user,
                                                             self.new_password)
-    
-            #Create network
-            new_network1 = self.controller.createNetwork(self.new_tenant,self.new_network1, 
-                                          self.new_user, self.new_password)
-            print "New Network:", new_network1  
+            
+            #Create network and subnetwork
+            new_network_inst1 = self.controller.createNetworkSubNetwork(self.new_tenant,self.new_network1,  
+                                          self.new_subnw1, self.new_user, self.new_password)
 
-            #Create subnet
-            new_subnet = self.controller.createSubnet(new_network1.get('network').get('id'), 
-                                                       self.new_tenant,self.new_user, self.new_password,
-                                                       self.new_subnw1)
-            print "New Subnetwork:", new_subnet
+            #Create key-pair & security groups and rules
+            keypair_secgrp = self.controller.createKeyPairSecurityGroup(new_project_user.tenant.id, self.new_user, 
+                                                   self.new_password)
 
-            #Create key-pair
-            key_pair = self.controller.createKeyPair(new_project_user.tenant.id, self.new_user, 
-                                                   self.new_password)
-    
-            #Create security groups and rules
-            self.controller.createSecurityGroup(new_project_user.tenant.id, self.new_user, 
-                                                   self.new_password)
 
             #Create instance
             host1 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
-                                                   self.new_password, new_network1.get('network').get('id'),
-                                                   self.new_inst1, key_name=key_pair, availability_zone=None)
+                                                   self.new_password, new_network_inst1.network.get('network').get('id'),
+                                                   self.new_inst1, key_name=keypair_secgrp.key_pair, availability_zone=None)
             print "Host1:", host1
 
             print "Connecting to database"
@@ -147,25 +137,17 @@ class VdpAssoc(object):
                 self.controller.deleteKeyPair(new_project_user.tenant.id, self.new_user, self.new_password)
                 time.sleep(5)                
             except Exception as e:
-                print "Error:", e
-        try:
-            new_network1 = self.controller.getNetwork(self.new_tenant,self.new_network1, 
-                                                         self.new_user, self.new_password)
-            if not new_network1:
-                print("Network not found during cleanup")
-                skip_nw = True
-        except Exception as e:
-            print "Error:", e
+                print "Error:", e   
         
         if not(skip_nw and skip_proj):    
             try:
-                self.controller.deleteNetwork(new_network1['id'], self.new_tenant, 
+                self.controller.deleteNetwork(self.controller, self.new_network1, self.new_tenant, 
                                           self.new_user, self.new_password)
             except Exception as e:
                 print "Error:", e
 
         try:
-            self.controller.deleteProjectUser(new_project_user)
+            self.controller.deleteProjectUser(self.controller, new_project_user)
         except Exception as e:
             print "Error:", e 
                

@@ -18,6 +18,14 @@ import time
 class ProjectUser:
     tenant = ''
     user = ''
+
+class NetworkSubNetwork:
+    network = ''
+    sub_network = '' 
+    
+class KeyPairSecGroup:
+    key_pair = ''
+    sec_grp = ''       
     
 class Controller(object):
     '''
@@ -178,11 +186,11 @@ class Controller(object):
         projUserInst.user = user_found
         return projUserInst
     
-    def deleteProjectUser(self, project_user):
+    def deleteProjectUser(self, controller, project_user):
         try:
-            user = self.controller.getUser(project_user.user)
+            user = controller.getUser(project_user.user.username)
             user.delete()
-            tenant = self.controller.getProject(project_user.tenant)
+            tenant = controller.getProject(project_user.tenant.name)
             tenant.delete()
         except Exception as e:
             raise Exception("Exception during delete of project/user")
@@ -220,13 +228,32 @@ class Controller(object):
         print "Created subnet:", subnet_range
         return new_subnet
     
-    def deleteNetwork(self, new_network_id, tenant, new_username, new_password):
-        neutron = self.get_neutron_client(tenant, new_username, new_password)
-        neutron.delete_network(new_network_id)
-        time.sleep(90)
+    def deleteNetwork(self, controller, new_network, tenant, new_username, new_password):
+        try:
+            neutron = self.get_neutron_client(tenant, new_username, new_password)
+            network = controller.getNetwork(tenant, new_network, new_username, new_password)
+            neutron.delete_network(network.get('id'))
+            time.sleep(90)
+        except Exception as e:
+            print "Exception found:", e
         return
-
-
+    
+    def createNetworkSubNetwork(self, tenant, name, subnet_range, new_username, new_password):
+        neutron = self.get_neutron_client(tenant, new_username, new_password)        
+        body = {"network": {"name": name,
+                   "admin_state_up": "True"}}
+        new_network = neutron.create_network(body=body)
+        new_network_id = new_network.get('network').get('id')
+        print "Created network:", name, "network_id:", new_network_id, "\n"
+        sub_body = {'subnets': [{'cidr': subnet_range,
+                          'ip_version': 4, 'network_id': new_network_id}]}
+        new_subnet = neutron.create_subnet(body=sub_body)
+        print "Created subnet:", subnet_range
+        network_inst = NetworkSubNetwork()
+        network_inst.network = new_network
+        network_inst.sub_network = new_subnet
+        return network_inst
+        
 
     '''Create client'''
         
@@ -305,7 +332,28 @@ class Controller(object):
                                          cidr="0.0.0.0/0",
                                          from_port=22, to_port=22)   
         return group
-         
+    
+    def createKeyPairSecurityGroup(self, tenant_id, new_username, new_password):
+        nova = self.get_nova_client(tenant_id, new_username, new_password)
+        with open(os.path.expanduser('~/.ssh/id_rsa.pub')) as f:
+            public_key = f.read()
+        group = nova.security_groups.find(name="default")  
+        if not group:
+            group = nova.security_groups.create(name="default")
+        
+        key = nova.keypairs.create('mykey', public_key)
+        
+        nova.security_group_rules.create(group.id, ip_protocol="icmp",
+                                         cidr="0.0.0.0/0",
+                                         from_port=-1, to_port=-1)
+        nova.security_group_rules.create(group.id, ip_protocol="tcp",
+                                         cidr="0.0.0.0/0",
+                                         from_port=22, to_port=22)   
+        
+        keypair_secgroup = KeyPairSecGroup()
+        keypair_secgroup.key_pair = key
+        keypair_secgroup.sec_grp = group
+        return keypair_secgroup     
    
     def createAggregate(self, tenant_id, new_username, new_password, agg_name, availability_zone): 
         nova = self.get_nova_client(tenant_id, new_username, new_password)        
