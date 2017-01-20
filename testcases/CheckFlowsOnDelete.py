@@ -58,37 +58,23 @@ class CheckFlowsOnDelete(object):
                 print "Some service/s not running...Unable to run testcase"
                 return resultConstants.RESULT_ABORT
             
-            #Create project
-            new_project = self.controller.createProject(self.new_tenant)
-    
-            #Create user
-            new_user = self.controller.createUser(new_project, 
-                                       new_username = self.new_user, 
-                                       new_password = self.new_password)
-    
-            #Create network
-            new_network1 = self.controller.createNetwork(self.new_tenant,self.new_network1, 
-                                          self.new_user, self.new_password)
-            print "New Network:", new_network1  
+            #Create project & user
+            new_project_user = self.controller.createProjectUser(self.new_tenant, 
+                                                            self.new_user,
+                                                            self.new_password)
+            
+            #Create network and subnetwork
+            new_network_inst1 = self.controller.createNetworkSubNetwork(self.new_tenant,self.new_network1,  
+                                          self.new_subnw1, self.new_user, self.new_password) 
 
-            #Create subnet
-            new_subnet = self.controller.createSubnet(new_network1.get('network').get('id'), 
-                                                       self.new_tenant,self.new_user, self.new_password,
-                                                       self.new_subnw1)
-            print "New Subnetwork:", new_subnet
-
-            #Create key-pair
-            key_pair = self.controller.createKeyPair(new_project.id, self.new_user, 
-                                                   self.new_password)
-    
-            #Create security groups and rules
-            self.controller.createSecurityGroup(new_project.id, self.new_user, 
+            #Create key-pair & security groups and rules
+            keypair_secgrp = self.controller.createKeyPairSecurityGroup(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password)
 
             #Create instance
-            host1 = self.controller.createInstance(new_project.id, self.new_user, 
-                                                   self.new_password, new_network1.get('network').get('id'),
-                                                   self.new_inst1, key_name=key_pair, availability_zone=None)
+            host1 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
+                                                   self.new_password, new_network_inst1.get('network').get('id'),
+                                                   self.new_inst1, key_name=keypair_secgrp.key_pair, availability_zone=None)
             print "Host1:", host1
         
             time.sleep(5)
@@ -120,10 +106,10 @@ class CheckFlowsOnDelete(object):
                 raise Exception("Incorrect ovs flows output.\n") 
             
             #Deleting instance and network
-            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+            self.controller.deleteKeyPair(new_project_user.tenant.id, self.new_user, self.new_password)
             print "Deleting Instance "+self.new_inst1+"..."
-            self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst1)
-            self.controller.deleteNetwork(new_network1.get('network').get('id'), self.new_tenant, 
+            self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, self.new_password, self.new_inst1)
+            self.controller.deleteNetwork(new_network_inst1.network.get('network').get('id'), self.new_tenant, 
                                       self.new_user, self.new_password)
             print "Waiting for flows to be deleted\n"
             time.sleep(15)

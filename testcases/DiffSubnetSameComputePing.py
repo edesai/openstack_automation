@@ -60,85 +60,45 @@ class DiffSubnetSameComputePing(object):
                 print "Some service/s not running...Unable to run testcase"
                 return resultConstants.RESULT_ABORT
             
-            #Create project
-            new_project = self.controller.createProject(self.new_tenant)
-             
-            nova = self.controller.get_nova_client(new_project.id, self.new_user, self.new_password)  
-            if not nova:
-                raise Exception("Nova client not found")
-    
-            #Create user
-            new_user = self.controller.createUser(new_project, 
-                                       new_username = self.new_user, 
-                                       new_password = self.new_password)
-    
-            #Create 1st network
-            new_network1 = self.controller.createNetwork(self.new_tenant,self.new_network1, 
-                                          self.new_user, self.new_password)
-            print "New Network:", new_network1   
+            #Create project & user
+            new_project_user = self.controller.createProjectUser(self.new_tenant, 
+                                                            self.new_user,
+                                                            self.new_password)
+            
+            #Create network and subnetwork
+            new_network_inst1 = self.controller.createNetworkSubNetwork(self.new_tenant,self.new_network1,  
+                                          self.new_subnw1, self.new_user, self.new_password)
 
-            #Create subnet
-            new_subnet1 = self.controller.createSubnet(new_network1.get('network').get('id'), 
-                                                       self.new_tenant,self.new_user, self.new_password,
-                                                       self.new_subnw1)
-            print "New Subnetwork:", new_subnet1
-    
             #Create 2nd network
-            new_network2 = self.controller.createNetwork(self.new_tenant, self.new_network2, 
-                                          self.new_user, self.new_password)
-            print "New Network:", new_network2   
-
-            #Create subnet
-            new_subnet2 = self.controller.createSubnet(new_network2.get('network').get('id'), 
-                                                       self.new_tenant,self.new_user, self.new_password,
-                                                       self.new_subnw2)
-            print "New Subnetwork:", new_subnet2
-
-            #Create key-pair
-            key_pair = self.controller.createKeyPair(new_project.id, self.new_user, 
-                                                   self.new_password)
-    
-            #Create security groups and rules
-            self.controller.createSecurityGroup(new_project.id, self.new_user, 
+            new_network_inst2 = self.controller.createNetworkSubNetwork(self.new_tenant,self.new_network2,  
+                              self.new_subnw2, self.new_user, self.new_password)
+            
+            #Create key-pair & security groups and rules
+            keypair_secgrp = self.controller.createKeyPairSecurityGroup(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password)
 
             #Create an aggregate with availability zone
-            agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['hostname']
-            zone1 = self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']
-            aggregate = self.controller.createAggregate(new_project.id, self.new_user, 
-                                                   self.new_password, agg_name=agg1, 
+            hosts_list = self.computeHosts
+            zone1 = self.new_tenant+"_az_"+hosts_list[0].hostname
+            agg_name=self.new_tenant+"_agg_"+hosts_list[0].hostname
+            aggregate1 = self.controller.createAggregate(new_project_user.tenant.id, self.new_user, 
+                                                   self.new_password, agg_name, 
                                                    availability_zone = zone1)
-            hosts = nova.hosts.list()
-            hosts_list = [h for h in hosts if h.zone == "nova"]
+            
             if hosts_list:
-                aggregate.add_host(hosts_list[0].host_name)                
+                aggregate1.add_host(hosts_list[0].hostname)                
             else:
                 raise Exception("No hosts found")
 
             #Create instance
-            zone1 = self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']
-            zones = nova.availability_zones.list()    
-            for zone in zones:
-                zone_name = str(zone.zoneName)
-                if zone_name == zone1:
-                    print "Launching instance in zone: ", zone_name 
-                    host1 = self.controller.createInstance(new_project.id, self.new_user, 
-                                                           self.new_password, new_network1.get('network').get('id'),
-                                                           self.new_inst1, key_name=key_pair, availability_zone=zone_name)
-                    print "Host1:", host1
-                    break
-
-            #Create instance
-            zones = nova.availability_zones.list()    
-            for zone in zones:
-                zone_name = str(zone.zoneName)
-                if zone_name == zone1:
-                    print "Launching instance in zone: ", zone_name        
-                    host2 = self.controller.createInstance(new_project.id, self.new_user, 
-                                                           self.new_password, new_network2.get('network').get('id'),
-                                                           self.new_inst2, key_name=key_pair, availability_zone=zone_name)
-                    print "Host2:", host2
-                    break
+            host1 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
+                                               self.new_password, new_network_inst1.network.get('network').get('id'),
+                                               self.new_inst1, key_name=keypair_secgrp.key_pair, availability_zone=zone1)
+            print "Host1:", host1
+            host2 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
+                                               self.new_password, new_network_inst2.network.get('network').get('id'),
+                                               self.new_inst2, key_name=keypair_secgrp.key_pair, availability_zone=zone1)
+            print "Host2:", host2
                 
             ip_host1 = str((host1[0].networks[self.new_network1])[0])
             ip_host2 = str((host2[0].networks[self.new_network2])[0])    
@@ -146,24 +106,24 @@ class DiffSubnetSameComputePing(object):
             #Verify Ping using DHCP namespace on controller
             pingObj = Ping()
             result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
-                                        new_network1.get('network').get('id'), ip_host1)
+                                        new_network_inst1.network.get('network').get('id'), ip_host1)
             if not result:
                 raise Exception("Ping failed...Failing test case\n")
             
             dhcp_ip1 = self.new_subnw1[:-4]+"2"
             result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
-                                        new_network1.get('network').get('id'), dhcp_ip1)
+                                        new_network_inst1.network.get('network').get('id'), dhcp_ip1)
             if not result:
                 raise Exception("Ping failed...Failing test case\n")
             
             result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
-                                        new_network1.get('network').get('id'), ip_host2)
+                                        new_network_inst1.network.get('network').get('id'), ip_host2)
             if not result:
                 raise Exception("Ping failed...Failing test case\n")
             
             dhcp_ip2 = self.new_subnw2[:-4]+"2"
             result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, self.controller.password,
-                                        new_network1.get('network').get('id'), dhcp_ip2)
+                                        new_network_inst1.network.get('network').get('id'), dhcp_ip2)
             if not result:
                 raise Exception("Ping failed...Failing test case\n")
         
@@ -179,111 +139,60 @@ class DiffSubnetSameComputePing(object):
     def cleanup(self):
         
         print "Cleanup:"
-        skip_nova = False
         skip_proj = False
         
         try:
-            new_project = self.controller.getProject(self.new_tenant)
-            if not new_project:
-                print "Project not found during cleanup"
+            new_project_user = self.controller.getProjectUser(self.new_tenant, self.new_user)
+            if not new_project_user:
+                print "Project/User not found during cleanup"
                 skip_proj = True
         except Exception as e:
             print "Error:", e
         
-        try: 
-            nova = self.controller.get_nova_client(new_project.id, self.new_user, self.new_password)  
-            if not nova:
-                print("Nova client not found during cleanup")
-                skip_nova = True
+        try:
+            hosts_list = self.computeHosts
+            host = []
+            host.append(hosts_list[0])
+            agg1 = self.new_tenant+"_agg_"+hosts_list[0].hostname
+            self.controller.deleteAggregate(self.controller, new_project_user.tenant.id, 
+                                            self.new_user, self.new_password, agg1, host)
         except Exception as e:
-            print "Error:", e
-            
-        if skip_nova is False:        
-            try:
-                agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['hostname']    
-                aggregate1 = self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
-                                                         agg_name=agg1)    
-                if not aggregate1:
-                    print("Aggregate1 not found during cleanup")
-            except Exception as e:
-                print "Error:", e
-            
-            try:
-                hosts = nova.hosts.list()
-                zone1 = self.new_tenant+"_az_"+self.config_dict['computes'][0]['hostname']
-                host1 = [h for h in hosts if h.zone == zone1]    
-                if host1 and aggregate1:
-                    aggregate1.remove_host(host1[0].host_name)
-                else:
-                    print("Hosts not found during cleanup")
-            except Exception as e:
-                print "Error:", e
-                
-            try:             
-                nova.aggregates.delete(aggregate1) 
-            except Exception as e:
-                print "Error:", e
+            print "Error:", e 
                 
         if skip_proj is False:    
             try:
-                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst1)
+                self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, self.new_password, self.new_inst1)
             except Exception as e:
                 print "Error:", e
             
             try:
-                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst2)
+                self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, self.new_password, self.new_inst2)
             except Exception as e:
                 print "Error:", e
             
             try:
-                self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+                self.controller.deleteKeyPair(new_project_user.tenant.id, self.new_user, self.new_password)
                 time.sleep(5)                
             except Exception as e:
                 print "Error:", e
+        
         try:
-            new_network1 = self.controller.getNetwork(self.new_tenant,self.new_network1, 
-                                                         self.new_user, self.new_password)
-            if not new_network1:
-                print("Network not found during cleanup")
-        except Exception as e:
-            print "Error:", e
-            
-        try:
-            self.controller.deleteNetwork(new_network1['id'], self.new_tenant, 
+            self.controller.deleteNetwork(self.controller, self.new_network1, self.new_tenant, 
                                       self.new_user, self.new_password)
         except Exception as e:
             print "Error:", e
         
         try:
-            new_network2 = self.controller.getNetwork(self.new_tenant,self.new_network2, 
-                                                         self.new_user, self.new_password)
-            if not new_network2:
-                print("Network not found during cleanup")
-        except Exception as e:
-            print "Error:", e
-            
-        try:
-            self.controller.deleteNetwork(new_network2['id'], self.new_tenant, 
+            self.controller.deleteNetwork(self.controller, self.new_network2, self.new_tenant, 
                                       self.new_user, self.new_password)
         except Exception as e:
             print "Error:", e
         
         try:
-            new_user = self.controller.getUser(self.new_user)
-            if not new_user:
-                print("User not found during cleanup")
+            self.controller.deleteProjectUser(self.controller, new_project_user)
         except Exception as e:
-            print "Error:", e
-            
-        try:
-            new_user.delete()
-        except Exception as e:
-            print "Error:", e
-            
-        try:
-            new_project.delete()
-        except Exception as e:
-            print "Error:", e
+            print "Error:", e 
+        
         
         print "Done"
         return ReturnValue.SUCCESS    

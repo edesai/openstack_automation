@@ -77,8 +77,8 @@ class SameSubnetSameComputePing(object):
             
             #Create an aggregate with availability zone
             hosts_list = self.computeHosts
-            zone1 = self.new_tenant+"_az_"+hosts_list[0]['hostname']
-            agg_name=self.new_tenant+"_agg_"+hosts_list[0]['hostname']
+            zone1 = self.new_tenant+"_az_"+hosts_list[0].hostname
+            agg_name=self.new_tenant+"_agg_"+hosts_list[0].hostname
             aggregate1 = self.controller.createAggregate(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password, agg_name, 
                                                    availability_zone = zone1)
@@ -87,14 +87,14 @@ class SameSubnetSameComputePing(object):
                 aggregate1.add_host(hosts_list[0].hostname)                
             else:
                 raise Exception("No hosts found")
-
+            '''
             #Create instance
             host1 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
                                                self.new_password, new_network_inst1.network.get('network').get('id'),
                                                self.new_inst1, key_name=keypair_secgrp.key_pair, availability_zone=zone1)
             print "Host1:", host1
             host2 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
-                                               self.new_password, new_network_inst1.get('network').get('id'),
+                                               self.new_password, new_network_inst1.network.get('network').get('id'),
                                                self.new_inst2, key_name=keypair_secgrp.key_pair, availability_zone=zone1)
             print "Host2:", host2
             
@@ -120,8 +120,8 @@ class SameSubnetSameComputePing(object):
                                         new_network_inst1.network.get('network').get('id'), dhcp_ip)
             if not result:
                 raise Exception("Ping failed...Failing test case\n")           
-                
-        
+            '''    
+            
         except Exception as e:
             print "Created Exception: ",e 
             self.cleanup()
@@ -146,14 +146,15 @@ class SameSubnetSameComputePing(object):
             print "Error:", e
     
         try:
-            agg1 = self.new_tenant+"_agg_"+self.config_dict['computes'][0]['hostname'] 
             hosts_list = self.computeHosts
-            
+            host = []
+            host.append(hosts_list[0])
+            agg1 = self.new_tenant+"_agg_"+hosts_list[0].hostname
             self.controller.deleteAggregate(self.controller, new_project_user.tenant.id, 
-                                            self.new_user, self.new_password, agg1, hosts_list[0])
+                                            self.new_user, self.new_password, agg1, host)
         except Exception as e:
             print "Error:", e       
-                
+        '''       
         if skip_proj is False:    
             try:
                 self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, self.new_password, self.new_inst1)
@@ -170,6 +171,7 @@ class SameSubnetSameComputePing(object):
                 time.sleep(5)                
             except Exception as e:
                 print "Error:", e
+        '''
         try:
             self.controller.deleteNetwork(self.controller, self.new_network1, self.new_tenant, 
                                       self.new_user, self.new_password)

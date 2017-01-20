@@ -372,7 +372,7 @@ class Controller(object):
             else:
                 for host in host_list:
                     aggregate.remove_host(host.hostname)
-                    nova.aggregates.delete(agg_name)
+                    nova.aggregates.delete(aggregate)
             return True
         except Exception as e:
             print "Error:", e
