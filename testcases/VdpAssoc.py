@@ -26,12 +26,16 @@ class VdpAssoc(object):
         Constructor
         '''
         self.config_dict = config_dict
-        self.controller = Controller(config_dict['controller']['hostname'], config_dict['controller']['ip'], config_dict['controller']['username'],
-                                    config_dict['controller']['password'], config_dict['controller']['sys_username'])
+        self.controller = Controller(config_dict['controller']['hostname'], 
+                                     config_dict['controller']['ip'], 
+                                     config_dict['controller']['username'],
+                                     config_dict['controller']['password'], 
+                                     config_dict['controller']['sys_username'])
 
         self.computeHosts = []
         for compute in config_dict['computes']:
-            self.computeHosts.append(Compute(compute['hostname'], compute['ip'], compute['username'], compute['password']))
+            self.computeHosts.append(Compute(compute['hostname'], compute['ip'], 
+                                             compute['username'], compute['password']))
         
         self.new_tenant = config_dict['openstack_tenant_details']['tenant_name']
         
@@ -80,29 +84,14 @@ class VdpAssoc(object):
                                                    self.new_password, new_network_inst1.network.get('network').get('id'),
                                                    self.new_inst1, key_name=keypair_secgrp.key_pair, availability_zone=None)
             print "Host1:", host1
-
-            print "Connecting to database"
-            #Connect to database
-            mysql_db = MySqlConnection(self.config_dict)
-            
-            with MySqlConnection(self.config_dict) as mysql_connection:
-            
-                data = mysql_db.get_instances(mysql_connection, self.new_inst1)
-                print "Host name is:", data[MySqlDbTables.INSTANCES_HOST_NAME]
-                host_name = data[MySqlDbTables.INSTANCES_HOST_NAME]
-
-            uplinkInst = Uplink(self.config_dict)
-            uplink_info = Uplink.get_info(uplinkInst, host_name)
-            print "uplink veth:", uplink_info.vethInterface
-            print "remote_port",  uplink_info.remotePort
-            
-            inst_str =  str((host1[0].networks[self.new_network1])[0])
             
             vdptool_inst = VdpToolCli()
-            result = VdpToolCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
-                                     self.controller.password, uplink_info.vethInterface, inst_str)
+            result = VdpToolCli.check_uplink_and_output(vdptool_inst, self.config_dict,
+                                                        str((host1.networks[self.new_network1])[0]), 
+                                                        host1.name, host1.host_name)
             if result is False:
                 raise Exception("Incorrect vdptool cmd output.\n")
+
      
         except Exception as e:
             print "Created Exception: ",e
@@ -138,12 +127,11 @@ class VdpAssoc(object):
             except Exception as e:
                 print "Error:", e   
         
-        if not(skip_nw and skip_proj):    
-            try:
-                self.controller.deleteNetwork(self.controller, self.new_network1, self.new_tenant, 
-                                          self.new_user, self.new_password)
-            except Exception as e:
-                print "Error:", e
+        try:
+            self.controller.deleteNetwork(self.controller, self.new_network1, self.new_tenant, 
+                                      self.new_user, self.new_password)
+        except Exception as e:
+            print "Error:", e
 
         try:
             self.controller.deleteProjectUser(self.controller, new_project_user)

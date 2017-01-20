@@ -21,12 +21,16 @@ class CheckFlowsOnComputeOnDelete(object):
         Constructor
         '''
         self.config_dict = config_dict
-        self.controller = Controller(config_dict['controller']['hostname'], config_dict['controller']['ip'], config_dict['controller']['username'],
-                                    config_dict['controller']['password'], config_dict['controller']['sys_username'])
+        self.controller = Controller(config_dict['controller']['hostname'], 
+                                     config_dict['controller']['ip'], 
+                                     config_dict['controller']['username'],
+                                     config_dict['controller']['password'], 
+                                     config_dict['controller']['sys_username'])
 
         self.computeHosts = []
         for compute in config_dict['computes']:
-            self.computeHosts.append(Compute(compute['hostname'], compute['ip'], compute['username'], compute['password']))
+            self.computeHosts.append(Compute(compute['hostname'], compute['ip'], 
+                                             compute['username'], compute['password']))
         '''
         For this test case, instantiate a compute object which is not the same as controller
         '''
@@ -55,7 +59,8 @@ class CheckFlowsOnComputeOnDelete(object):
         
     
     def runTest(self):  
-         
+        del_inst = False 
+        
         try:
             #Basic checks for status of services
             status_inst = CheckStatusOfServices(self.config_dict)
@@ -76,10 +81,6 @@ class CheckFlowsOnComputeOnDelete(object):
             #Create key-pair & security groups and rules
             keypair_secgrp = self.controller.createKeyPairSecurityGroup(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password)
-  
-            nova = self.controller.get_nova_client(new_project_user.tenant.id, self.new_user, self.new_password)  
-            if not nova:
-                raise Exception("Nova client not found")
             
             
             hosts_list = self.computeHosts
@@ -108,74 +109,53 @@ class CheckFlowsOnComputeOnDelete(object):
                 raise Exception("No hosts found")
 
             #Create instance
-            zones = nova.availability_zones.list()    
-            for zone in zones:
-                zone_name = str(zone.zoneName)
-                if zone_name == zone1:
-                    print "Launching instance in zone: ", zone_name
-                    host1 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
-                                                           self.new_password, new_network_inst1.network.get('network').get('id'),
-                                                   self.new_inst1, key_name=keypair_secgrp.keypair, availability_zone=zone_name)
+            host1 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
+                                                   self.new_password, new_network_inst1.network.get('network').get('id'),
+                                                   self.new_inst1, key_name=keypair_secgrp.keypair, availability_zone=zone1)
             print "Host1:", host1
+            del_inst = True
             
-            zones = nova.availability_zones.list()    
-            for zone in zones:
-                zone_name = str(zone.zoneName)
-                if zone_name == zone2:
-                    print "Launching instance in zone: ", zone_name    
-                    host2 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
-                                                           self.new_password, new_network_inst1.get('network').get('id'),
-                                                   self.new_inst2, key_name=keypair_secgrp.keypair, availability_zone=zone_name)
+            host2 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
+                                                   self.new_password, new_network_inst1.get('network').get('id'),
+                                                   self.new_inst2, key_name=keypair_secgrp.keypair, availability_zone=zone2)
             print "Host2:", host2
-            
-            
-            print "Connecting to database"
-            #Connect to database
-            mysql_db = MySqlConnection(self.config_dict)
-            
-            with MySqlConnection(self.config_dict) as mysql_connection:
-                
-                data = mysql_db.get_instances(mysql_connection, self.new_inst1)
-                print "Instance name:", data[MySqlDbTables.INSTANCES_INSTANCE_NAME], ", Instance IP:", data[MySqlDbTables.INSTANCES_INSTANCE_IP], ", vdp_vlan:", data[MySqlDbTables.INSTANCES_VDP_VLAN] 
-                vdp_vlan = str(data[MySqlDbTables.INSTANCES_VDP_VLAN])   
         
-            search_str =  "dl_vlan="+vdp_vlan
+            time.sleep(20) # wait for flows to be added
+            
+            #Verify Flows
             vdptool_inst = OvsFlowsCli()
-            result = OvsFlowsCli.check_output(vdptool_inst, self.compute.ip, self.compute.username, 
-                                     self.compute.password, "br-int", search_str)
+            result = OvsFlowsCli.check_if_exists_in_both_br_flows(vdptool_inst, self.config_dict, 
+                                                                  self.compute.ip, self.compute.username, 
+                                                                  self.compute.password, host1[0].name)
             if not result:
-                raise Exception("Incorrect ovs flows output.\n")   
-
-            search_str = "mod_vlan_vid:"+vdp_vlan
-            vdptool_inst = OvsFlowsCli()
-            result = OvsFlowsCli.check_output(vdptool_inst, self.compute.ip, self.compute.username, 
-                                     self.compute.password, "br-ethd", search_str)
-            if not result:
-                raise Exception("Incorrect ovs flows output.\n")     
+                raise Exception("Incorrect OVS flows")    
        
             #delete one instance 
             self.controller.deleteKeyPair(new_project_user.tenant.id, self.new_user, self.new_password)
             print "Deleting the Instance - "+self.new_inst2+" on "+self.compute.hostname+"..."
             self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, self.new_password, self.new_inst2)
+            del_inst = False
             
-
+            print "Waiting for flows to be deleted\n"
+            time.sleep(20) # wait for flows to be deleted
+            
             #Check flows on that same compute (should not exist)
-            search_str =  "dl_vlan="+vdp_vlan
+            #Verify Flows
             vdptool_inst = OvsFlowsCli()
-            result = OvsFlowsCli.check_output(vdptool_inst, self.compute.ip, self.compute.username, 
-                                     self.compute.password, "br-int", search_str)
+            result = OvsFlowsCli.check_if_exists_in_both_br_flows(vdptool_inst, self.config_dict, 
+                                                                  self.compute.ip, self.compute.username, 
+                                                                  self.compute.password, host1[0].name)
             if result:
-                raise Exception("Incorrect ovs flows output.\n")   
-            
-            search_str = "mod_vlan_vid:"+vdp_vlan
-            vdptool_inst = OvsFlowsCli()
-            result = OvsFlowsCli.check_output(vdptool_inst, self.compute.ip, self.compute.username, 
-                                     self.compute.password, "br-ethd", search_str)
-            if result:
-                raise Exception("Incorrect ovs flows output.\n")
+                raise Exception("Flows exist..Incorrect OVS output.\n")
         
         except Exception as e:
             print "Error:", e
+            if del_inst:
+                #delete one instance 
+                self.controller.deleteKeyPair(new_project_user.tenant.id, self.new_user, self.new_password)
+                print "Deleting the Instance - "+self.new_inst2+" on "+self.compute.hostname+"..."
+                self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, self.new_password, self.new_inst2)
+            
             self.cleanup()
             return ReturnValue.FAILURE
         
@@ -200,7 +180,6 @@ class CheckFlowsOnComputeOnDelete(object):
         if skip_nova is False:        
             try:
                 agg1 = self.new_tenant+"_agg_"+ hosts_list[0].hostname
-                    
                 hosts_list1 = []
                 hosts_list1.append(hosts_list[0])
                 self.controller.deleteAggregate(new_project_user.tenant.id, self.new_user, 
@@ -211,7 +190,6 @@ class CheckFlowsOnComputeOnDelete(object):
 
             try:
                 agg2 = self.new_tenant+"_agg_"+hosts_list[1].hostname 
-                
                 hosts_list2 = []
                 hosts_list2.append(hosts_list[1])
                 self.controller.deleteAggregate(new_project_user.tenant.id, self.new_user,

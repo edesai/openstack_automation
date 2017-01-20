@@ -49,7 +49,7 @@ class CheckFlowsOnDeleteOneInst(object):
         
     
     def runTest(self):  
-          
+        del_inst = False  
         try:
             #Basic checks for status of services
             status_inst = CheckStatusOfServices(self.config_dict)
@@ -58,90 +58,69 @@ class CheckFlowsOnDeleteOneInst(object):
                 print "Some service/s not running...Unable to run testcase"
                 return resultConstants.RESULT_ABORT
             
-            #Create project
-            new_project = self.controller.createProject(self.new_tenant)
-    
-            #Create user
-            new_user = self.controller.createUser(new_project, 
-                                       new_username = self.new_user, 
-                                       new_password = self.new_password)
-    
-            #Create network
-            new_network1 = self.controller.createNetwork(self.new_tenant,self.new_network1, 
-                                          self.new_user, self.new_password)
-            print "New Network:", new_network1  
+            #Create project & user
+            new_project_user = self.controller.createProjectUser(self.new_tenant, 
+                                                            self.new_user,
+                                                            self.new_password)
+            
+            #Create network and subnetwork
+            new_network_inst1 = self.controller.createNetworkSubNetwork(self.new_tenant,self.new_network1,  
+                                          self.new_subnw1, self.new_user, self.new_password)
 
-            #Create subnet
-            new_subnet = self.controller.createSubnet(new_network1.get('network').get('id'), 
-                                                       self.new_tenant,self.new_user, self.new_password,
-                                                       self.new_subnw1)
-            print "New Subnetwork:", new_subnet
-
-            #Create key-pair
-            key_pair = self.controller.createKeyPair(new_project.id, self.new_user, 
-                                                   self.new_password)
-    
-            #Create security groups and rules
-            self.controller.createSecurityGroup(new_project.id, self.new_user, 
+            #Create key-pair & security groups and rules
+            keypair_secgrp = self.controller.createKeyPairSecurityGroup(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password)
 
             #Create instance
-            host1 = self.controller.createInstance(new_project.id, self.new_user, 
-                                                   self.new_password, new_network1.get('network').get('id'),
-                                                   self.new_inst1, key_name=key_pair, availability_zone=None)
+            host1 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
+                                                   self.new_password, new_network_inst1.network.get('network').get('id'),
+                                                   self.new_inst1, key_name=keypair_secgrp.key_pair, availability_zone=None)
+            del_inst = True
             print "Host1:", host1
 
             #Create instance
-            host2 = self.controller.createInstance(new_project.id, self.new_user, 
-                                                   self.new_password, new_network1.get('network').get('id'),
-                                                   self.new_inst2, key_name=key_pair, availability_zone=None)
+            host2 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
+                                                   self.new_password, new_network_inst1.network.get('network').get('id'),
+                                                   self.new_inst2, key_name=keypair_secgrp.key_pair, availability_zone=None)
             print "Host2:", host2
             
-            print "Connecting to database"
-            #Connect to database
-            mysql_db = MySqlConnection(self.config_dict)
+            time.sleep(20) # wait for flows to be added
             
-            with MySqlConnection(self.config_dict) as mysql_connection:
-                
-                data = mysql_db.get_instances(mysql_connection, self.new_inst1)
-                print "Instance name:", data[MySqlDbTables.INSTANCES_INSTANCE_NAME], ", Instance IP:", data[MySqlDbTables.INSTANCES_INSTANCE_IP], ", vdp_vlan:", data[MySqlDbTables.INSTANCES_VDP_VLAN] 
-                vdp_vlan = str(data[MySqlDbTables.INSTANCES_VDP_VLAN])   
-        
-            search_str =  "dl_vlan="+vdp_vlan
+            #Verify Flows
             vdptool_inst = OvsFlowsCli()
-            result = OvsFlowsCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
-                                     self.controller.password, "br-int", search_str)
+            result = OvsFlowsCli.check_if_exists_in_both_br_flows(vdptool_inst, self.config_dict, 
+                                                                  self.controller.ip, self.controller.sys_username,
+                                                                  self.controller.password, host1[0].name)
             if not result:
-                raise Exception("Incorrect ovs flows output.\n")   
-
-            search_str = "mod_vlan_vid:"+vdp_vlan
-            vdptool_inst = OvsFlowsCli()
-            result = OvsFlowsCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
-                                     self.controller.password, "br-ethd", search_str)
-            if not result:
-                raise Exception("Incorrect ovs flows output.\n")     
+                raise Exception("Incorrect OVS flows")    
        
             #Verify that flows are not deleted after deleting one instance on Controller+Compute
-            self.controller.deleteKeyPair(new_project.id, self.new_user, self.new_password)
+            self.controller.deleteKeyPair(new_project_user.tenant.id, self.new_user, self.new_password)
             print "Deleting only 1 Instance - "+self.new_inst1+"..."
-            self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst1)
-       
-            search_str =  "dl_vlan="+vdp_vlan
-            vdptool_inst = OvsFlowsCli()
-            result = OvsFlowsCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
-                                     self.controller.password, "br-int", search_str)
-            if not result:
-                raise Exception("Incorrect ovs flows output.\n")   
+            self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, self.new_password, self.new_inst1)
+            del_inst = False
             
-            search_str = "mod_vlan_vid:"+vdp_vlan
+            print "Waiting for flows to be deleted\n"
+            time.sleep(20) # wait for flows to be deleted
+            
+            #Verify Flows
             vdptool_inst = OvsFlowsCli()
-            result = OvsFlowsCli.check_output(vdptool_inst, self.controller.ip, self.controller.sys_username, 
-                                     self.controller.password, "br-ethd", search_str)
+            result = OvsFlowsCli.check_if_exists_in_both_br_flows(vdptool_inst, 
+                                                                  self.config_dict, self.controller.ip, 
+                                                                  self.controller.sys_username,
+                                                                  self.controller.password, host1[0].name)
             if not result:
-                raise Exception("Incorrect ovs flows output.\n")
+                raise Exception("Incorrect OVS flows")
         
         except Exception as e:
             print "Error:", e
+            if del_inst:
+                #Deleting instance and network
+                self.controller.deleteKeyPair(new_project_user.tenant.id, 
+                                              self.new_user, self.new_password)
+                print "Deleting Instance "+self.new_inst1+"..."
+                self.controller.deleteInstance(new_project_user.tenant.id, 
+                                               self.new_user, self.new_password, self.new_inst1)
             self.cleanup()
             return ReturnValue.FAILURE
         
@@ -154,51 +133,31 @@ class CheckFlowsOnDeleteOneInst(object):
         skip_proj = False
         
         try:
-            new_project = self.controller.getProject(self.new_tenant)
-            if not new_project:
-                print "Project not found during cleanup"
+            new_project_user = self.controller.getProjectUser(self.new_tenant, self.new_user)
+            if not new_project_user:
+                print "Project/User not found during cleanup"
                 skip_proj = True
         except Exception as e:
-            print "Error:", e
+            print "Error:", e 
                 
         if skip_proj is False:    
             
             try:
-                self.controller.deleteInstance(new_project.id, self.new_user, self.new_password, self.new_inst2)
+                self.controller.deleteInstance(new_project_user.tenant.id, 
+                                               self.new_user, self.new_password, self.new_inst2)
             except Exception as e:
                 print "Error:", e
             
         try:
-            new_network1 = self.controller.getNetwork(self.new_tenant,self.new_network1, 
-                                                         self.new_user, self.new_password)
-            if not new_network1:
-                print("Network not found during cleanup")
-        except Exception as e:
-            print "Error:", e
-            
-        try:
-            self.controller.deleteNetwork(new_network1['id'], self.new_tenant, 
+            self.controller.deleteNetwork(self.controller, self.new_network1, self.new_tenant, 
                                       self.new_user, self.new_password)
         except Exception as e:
             print "Error:", e
         
         try:
-            new_user = self.controller.getUser(self.new_user)
-            if not new_user:
-                print("User not found during cleanup")
+            self.controller.deleteProjectUser(self.controller, new_project_user)
         except Exception as e:
-            print "Error:", e
-            
-        try:
-            new_user.delete()
-        except Exception as e:
-            print "Error:", e
-        
-        if skip_proj is False:    
-            try:
-                new_project.delete()
-            except Exception as e:
-                print "Error:", e
+            print "Error:", e 
             
         print "Done"
         return ReturnValue.SUCCESS

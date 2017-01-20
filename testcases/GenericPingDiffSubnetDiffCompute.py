@@ -181,44 +181,7 @@ class GenericPingDiffSubnetDiffCompute(object):
                                                 self.new_password, agg_list, hosts_list)
             except Exception as e:
                 print "Error:", e
-            '''
-            try:
-                for host in range(int(nw1_compute_count)):
-                    agg.append(self.new_tenant+"_agg_" + hosts_list[host].hostname) 
-                    aggregate.append(self.controller.getAggregate(new_project_user.tenant.id, self.new_user, self.new_password,
-                                                                   agg_name=agg[host]))
-                    zone.append(self.new_tenant+"_az_"+hosts_list[host].hostname)  
-                    aggregate[host].remove_host(hosts_list[host].hostname)   
- 
-            except Exception as e:
-                print "Error:", e
-                
-            try:
-                for host in range(int(nw1_compute_count)):
-                    if aggregate[host]:             
-                        nova.aggregates.delete(aggregate[host]) 
-            except Exception as e:
-                print "Error:", e
-            
-            try:
-                for host in range(int(nw1_compute_count), int(self.computeCount - 1)):
-                    agg.append(self.new_tenant+"_agg_" + hosts_list[host].hostname) 
-                    aggregate.append(self.controller.getAggregate(new_project.id, self.new_user, self.new_password,
-                                                                   agg_name=agg[host]))
-                    zone.append(self.new_tenant+"_az_"+hosts_list[host].hostname)  
-                    aggregate[host].remove_host(hosts_list[host].hostname)   
- 
-            except Exception as e:
-                print "Error:", e
-               
-                
-            try:
-                for host in range(int(nw1_compute_count), int(self.computeCount - 1)):
-                    if aggregate[host]:             
-                        nova.aggregates.delete(aggregate[host]) 
-            except Exception as e:
-                print "Error:", e
-            '''    
+    
         if skip_proj is False:    
             
             for host in range(self.computeCount):

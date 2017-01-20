@@ -6,6 +6,7 @@ Created on Dec 7, 2016
 from common.Utils import SSHConnection
 from common.MySqlConnection import MySqlConnection
 from common.MySqlDbTables import MySqlDbTables
+from common.VdpToolCli import VdpToolCli
 
 class OvsFlowsCli(object):
     '''
@@ -43,8 +44,9 @@ class OvsFlowsCli(object):
         mysql_db = MySqlConnection(config_dict)
         
         with MySqlConnection(config_dict) as mysql_connection:
-            
             data = mysql_db.get_instances(mysql_connection, instname)
+            if data is None:
+                raise Exception("No data in db for the instance\n")
             print "Instance name:", data[MySqlDbTables.INSTANCES_INSTANCE_NAME], ", Instance IP:", data[MySqlDbTables.INSTANCES_INSTANCE_IP], ", vdp_vlan:", data[MySqlDbTables.INSTANCES_VDP_VLAN] 
             vdp_vlan = str(data[MySqlDbTables.INSTANCES_VDP_VLAN])   
         
@@ -62,3 +64,20 @@ class OvsFlowsCli(object):
         result2 = OvsFlowsCli.check_output(vdptool_inst, node_ip, node_username, 
                                  node_password, "br-ethd", search_str)
         return result1 and result2
+    
+    def verify_ovs_and_vdp(self, config_dict, node_ip, node_username,
+                           node_password, inst_name, inst_ip, inst_hostname):
+        
+        result1 = OvsFlowsCli.check_if_exists_in_both_br_flows(self, config_dict, 
+                                                               node_ip, 
+                                                               node_username, 
+                                                               node_password, 
+                                                               inst_name)
+                
+        #Verify vdptool output
+        vdptool_inst = VdpToolCli()
+        result2 = VdpToolCli.check_uplink_and_output(vdptool_inst, config_dict, 
+                                                     inst_ip, inst_name, inst_hostname)
+        
+        return (result1 and result2)
+

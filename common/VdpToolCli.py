@@ -45,8 +45,9 @@ class VdpToolCli(object):
         mysql_db = MySqlConnection(config_dict)
         
         with MySqlConnection(config_dict) as mysql_connection:
-        
             data = mysql_db.get_instances(mysql_connection, instname)
+            if data is None:
+                raise Exception("No data found in db for instance")
             print "Host name is:", data[MySqlDbTables.INSTANCES_HOST_NAME]
             host_name = data[MySqlDbTables.INSTANCES_HOST_NAME]
 
@@ -60,5 +61,7 @@ class VdpToolCli(object):
         for compute in config_dict['computes']:
             if compute['hostname'] == host_name:
                 vdptool_inst = VdpToolCli()
-                result = VdpToolCli.check_output(vdptool_inst, compute['ip'], compute['username'], compute['password'], uplink_info.vethInterface, inst_str)
+                result = VdpToolCli.check_output(vdptool_inst, compute['ip'], 
+                                                 compute['username'], compute['password'], 
+                                                 uplink_info.vethInterface, inst_str)
         return result
