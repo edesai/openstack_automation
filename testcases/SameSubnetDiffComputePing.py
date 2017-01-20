@@ -51,10 +51,7 @@ class SameSubnetDiffComputePing(object):
              
     
     def runTest(self):
-        '''print "In runTest()..."
-        cleanup = GeneralCleanup(self.config_dict)
-        cleanup.start()
-        return'''
+
         try:
             
             #Basic checks for status of services

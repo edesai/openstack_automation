@@ -360,23 +360,44 @@ class Controller(object):
         aggregate = nova.aggregates.create(agg_name, availability_zone)
         return aggregate
     
-    def deleteAggregate(self, tenant_id, username, password, 
+    def deleteAggregate(self, controller, tenant_id, username, password, 
                         agg_name, host_list):
         try:
             nova = self.get_nova_client(tenant_id, username, password)
-            aggregate = self.controller.getAggregate(tenant_id, username, password,
+            aggregate = controller.getAggregate(tenant_id, username, password,
                                              agg_name=agg_name)
             if not aggregate:
                 print "Aggregate"+aggregate+"not found"
                 return False
             else:
                 for host in host_list:
-                    aggregate.remove_host(host.host_name)
+                    aggregate.remove_host(host.hostname)
                     nova.aggregates.delete(agg_name)
             return True
         except Exception as e:
             print "Error:", e
-                        
+            
+    def deleteAggregateList(self, controller, tenant_id, username, password, 
+                        agg_list, host_list):        
+        if(len(agg_list) != len(host_list)):
+            raise Exception ("Length of host_list and aggregate_list "
+                             "is not same.Consider using deleteAggregate Api instead")
+            
+        try:
+            nova = self.get_nova_client(tenant_id, username, password)
+            
+            for var in range(len(host_list)):
+                aggregate = controller.getAggregate(tenant_id, username, password,
+                                             agg_list[var])
+                if aggregate is None:
+                    print "Aggregate"+agg_list[var]+"not found"
+                    return False
+                else:
+                    aggregate.remove_host(host_list[var].hostname)
+                    nova.aggregates.delete(aggregate)
+            return True
+        except Exception as e:
+            print "Error:", e                
                 
             
     

@@ -26,7 +26,7 @@ TEST_CASE_MAP = {
     "1" : GenericPingSameSubnetDiffCompute,
     "2" : SameSubnetSameComputePing,
     "3" : DiffSubnetSameComputePing,
-    "4" : DiffSubnetDiffComputePing,
+    "4" : GenericPingDiffSubnetDiffCompute,
     "5" : CheckFlowsOnDelete,
     "6" : CheckFlowsOnDeleteOneInst,
     "7" : CheckFlowsOnComputeOnDelete,
