@@ -47,7 +47,9 @@ class VdpToolCli(object):
         with MySqlConnection(config_dict) as mysql_connection:
             data = mysql_db.get_instances(mysql_connection, instname)
             if data is None:
-                raise Exception("No data found in db for instance")
+                print ("No data found in mysql db")
+                return False
+            
             print "Host name is:", data[MySqlDbTables.INSTANCES_HOST_NAME]
             host_name = data[MySqlDbTables.INSTANCES_HOST_NAME]
 

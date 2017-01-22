@@ -78,17 +78,29 @@ class VdpAssoc(object):
             keypair_secgrp = self.controller.createKeyPairSecurityGroup(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password)
 
-
+            #Create aggregate with availability zone
+            hosts_list = self.computeHosts
+            zone1 = self.new_tenant+"_az_"+hosts_list[0].hostname
+            agg_name=self.new_tenant+"_agg_"+hosts_list[0].hostname
+            aggregate1 = self.controller.createAggregate(new_project_user.tenant.id, self.new_user, 
+                                                        self.new_password, agg_name, 
+                                                        availability_zone = zone1)
+            
+            if hosts_list:
+                aggregate1.add_host(hosts_list[0].hostname)
+                
             #Create instance
             host1 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
-                                                   self.new_password, new_network_inst1.network.get('network').get('id'),
-                                                   self.new_inst1, key_name=keypair_secgrp.key_pair, availability_zone=None)
+                                                   self.new_password, 
+                                                   new_network_inst1.network.get('network').get('id'),
+                                                   self.new_inst1, key_name=keypair_secgrp.key_pair, 
+                                                   availability_zone=zone1)
             print "Host1:", host1
             
             vdptool_inst = VdpToolCli()
             result = VdpToolCli.check_uplink_and_output(vdptool_inst, self.config_dict,
-                                                        str((host1.networks[self.new_network1])[0]), 
-                                                        host1.name, host1.host_name)
+                                                        str((host1[0].networks[self.new_network1])[0]), 
+                                                        host1[0].name, hosts_list[0].hostname)
             if result is False:
                 raise Exception("Incorrect vdptool cmd output.\n")
 
@@ -105,7 +117,6 @@ class VdpAssoc(object):
     def cleanup(self):                
         print "Cleanup:"
         skip_proj = False
-        skip_nw = False
         
         try:
             new_project_user = self.controller.getProjectUser(self.new_tenant, self.new_user)
@@ -114,22 +125,36 @@ class VdpAssoc(object):
                 skip_proj = True
         except Exception as e:
             print "Error:", e
+            
+        try:
+            hosts_list = self.computeHosts
+            host = []
+            host.append(hosts_list[0])
+            agg1 = self.new_tenant+"_agg_"+hosts_list[0].hostname
+            self.controller.deleteAggregate(self.controller, new_project_user.tenant.id, 
+                                            self.new_user, self.new_password, agg1, host)
+        except Exception as e:
+            print "Error:", e 
                 
         if skip_proj is False:    
             try:
-                self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, self.new_password, self.new_inst1)
+                self.controller.deleteInstance(new_project_user.tenant.id, 
+                                               self.new_user, self.new_password, 
+                                               self.new_inst1)
             except Exception as e:
                 print "Error:", e
             
             try:
-                self.controller.deleteKeyPair(new_project_user.tenant.id, self.new_user, self.new_password)
+                self.controller.deleteKeyPair(new_project_user.tenant.id, 
+                                              self.new_user, self.new_password)
                 time.sleep(5)                
             except Exception as e:
                 print "Error:", e   
         
         try:
-            self.controller.deleteNetwork(self.controller, self.new_network1, self.new_tenant, 
-                                      self.new_user, self.new_password)
+            self.controller.deleteNetwork(self.controller, self.new_network1, 
+                                          self.new_tenant, self.new_user, 
+                                          self.new_password)
         except Exception as e:
             print "Error:", e
 

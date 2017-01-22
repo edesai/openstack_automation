@@ -46,7 +46,9 @@ class OvsFlowsCli(object):
         with MySqlConnection(config_dict) as mysql_connection:
             data = mysql_db.get_instances(mysql_connection, instname)
             if data is None:
-                raise Exception("No data in db for the instance\n")
+                print ("No data found in mysql db")
+                return False
+            
             print "Instance name:", data[MySqlDbTables.INSTANCES_INSTANCE_NAME], ", Instance IP:", data[MySqlDbTables.INSTANCES_INSTANCE_IP], ", vdp_vlan:", data[MySqlDbTables.INSTANCES_VDP_VLAN] 
             vdp_vlan = str(data[MySqlDbTables.INSTANCES_VDP_VLAN])   
         

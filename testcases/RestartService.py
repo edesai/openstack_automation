@@ -50,6 +50,7 @@ class RestartService(object):
         self.new_subnw2 = "10.13.14.0/24"
         self.new_inst1 = self.new_tenant+"inst1"
         self.new_inst2 = self.new_tenant+"inst2"
+        self.num_inst = 5
         self.config_dict = config_dict 
     
     def runTest(self, service):
@@ -110,16 +111,16 @@ class RestartService(object):
                                                    self.new_password, 
                                                    new_network_inst1.network.get('network').get('id'),
                                                    self.new_inst1, key_name=keypair_secgrp.key_pair, 
-                                                   availability_zone=zone1, count = 5)
+                                                   availability_zone=zone1, count = self.num_inst)
             
             host2 = self.controller.createInstance(new_project_user.tenant.id, self.new_user, 
                                                    self.new_password, 
                                                    new_network_inst2.network.get('network').get('id'),
                                                    self.new_inst2, key_name=keypair_secgrp.key_pair, 
-                                                   availability_zone=zone2, count = 5)
+                                                   availability_zone=zone2, count = self.num_inst)
             
 
-
+            
             #Verify Ping, ovs flows and uplink & vdptool output using DHCP namespace on controller (before restart)
             pingObj = Ping()
             
@@ -140,19 +141,19 @@ class RestartService(object):
             
             if not result:
                 raise Exception("Ping failed...Failing test case\n")
-                       
+                      
             inst_ip_list = []
             
             #Gathering instances information
-            for inst in range(5):
+            for inst in range(self.num_inst):
                 print "loop:", inst
                 instObj = Instance(ip = str((host1[inst].networks[self.new_network1])[0]), 
-                                   instname = str(host1[inst].name), hostname = hosts_list[0].host_name)
+                                   instname = str(host1[inst].name), hostname = hosts_list[0].hostname)
                 print "InstObj1:", instObj
                 inst_ip_list.append(instObj)
                 print "inst_ip_list1:", inst_ip_list
                 instObj = Instance(ip = str((host2[inst].networks[self.new_network2])[0]), 
-                                   instname = str(host2[inst].name), hostname = hosts_list[1].host_name)
+                                   instname = str(host2[inst].name), hostname = hosts_list[1].hostname)
                 print "InstObj2:", instObj
                 inst_ip_list.append(instObj)
                 print "inst_ip_list2:", inst_ip_list
@@ -255,7 +256,7 @@ class RestartService(object):
             
         if skip_proj is False:
             try:
-                for var in range(2):        
+                for var in range(self.num_inst):        
                     agg_list.append(self.new_tenant+"_agg_" + hosts_list[var].hostname)
                     hosts.append(hosts_list[var])
                 self.controller.deleteAggregateList(self.controller, new_project_user.tenant.id, 
@@ -267,13 +268,13 @@ class RestartService(object):
         if skip_proj is False:    
             try:
                 self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, 
-                                               self.new_password, self.new_inst1, count = 5)
+                                               self.new_password, self.new_inst1, count = self.num_inst)
             except Exception as e:
                 print "Error:", e
             
             try:
                 self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, 
-                                               self.new_password, self.new_inst2, count = 5)
+                                               self.new_password, self.new_inst2, count = self.num_inst)
             except Exception as e:
                 print "Error:", e
             
