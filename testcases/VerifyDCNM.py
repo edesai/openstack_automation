@@ -44,6 +44,7 @@ class VerifyDCNM(object):
             self.new_password = config_dict['openstack_tenant_details']['tenant_password']
         else:
             self.new_password = "cisco123"
+            
         self.new_network1 = self.new_tenant+"nw1"
         self.new_subnw1 = "10.11.12.0/24"
         self.new_inst1 = self.new_tenant+"inst1"

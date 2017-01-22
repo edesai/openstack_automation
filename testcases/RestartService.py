@@ -52,8 +52,8 @@ class RestartService(object):
         self.new_inst2 = self.new_tenant+"inst2"
         self.config_dict = config_dict 
     
-    def runTest(self, service):   
-        
+    def runTest(self, service):
+          
         print "Service to be restarted is:", service
         
         try:
@@ -122,7 +122,7 @@ class RestartService(object):
 
             #Verify Ping, ovs flows and uplink & vdptool output using DHCP namespace on controller (before restart)
             pingObj = Ping()
-
+            
             dhcp_ip1 = self.new_subnw1[:-4]+"2"
             result = pingObj.verify_ping_qdhcpns(self.controller.ip, self.controller.sys_username, 
                                                  self.controller.password,
@@ -140,7 +140,7 @@ class RestartService(object):
             
             if not result:
                 raise Exception("Ping failed...Failing test case\n")
-                        
+                       
             inst_ip_list = []
             
             #Gathering instances information
@@ -254,12 +254,15 @@ class RestartService(object):
         
             
         if skip_proj is False:
-            for var in range(2):        
-                agg_list.append(self.new_tenant+"_agg_" + hosts_list[var].hostname)
-                hosts.append = hosts_list[var]
-            self.controller.deleteAggregateList(self.controller, new_project_user.tenant.id, 
-                                                self.new_user, self.new_password, 
-                                                agg_list, hosts)       
+            try:
+                for var in range(2):        
+                    agg_list.append(self.new_tenant+"_agg_" + hosts_list[var].hostname)
+                    hosts.append(hosts_list[var])
+                self.controller.deleteAggregateList(self.controller, new_project_user.tenant.id, 
+                                                    self.new_user, self.new_password, 
+                                                    agg_list, hosts)       
+            except Exception as e:
+                print "Error:", e
                 
         if skip_proj is False:    
             try:
