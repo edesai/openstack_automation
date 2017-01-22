@@ -355,9 +355,12 @@ class Controller(object):
         keypair_secgroup.sec_grp = group
         return keypair_secgroup     
    
-    def createAggregate(self, tenant_id, new_username, new_password, agg_name, availability_zone): 
+    def createAggregate(self, tenant_id, new_username, new_password, 
+                        agg_name, availability_zone, host_list): 
         nova = self.get_nova_client(tenant_id, new_username, new_password)        
         aggregate = nova.aggregates.create(agg_name, availability_zone)
+        for host in host_list:
+            aggregate.add_host(host_list[host].hostname)
         return aggregate
     
     def deleteAggregate(self, controller, tenant_id, username, password, 
