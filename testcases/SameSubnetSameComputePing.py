@@ -175,7 +175,7 @@ class SameSubnetSameComputePing(object):
                 host)
         except Exception as e:
             print "Error:", e
-        '''
+        
         if skip_proj is False:
             try:
                 self.controller.deleteInstance(new_project_user.tenant.id, self.new_user, self.new_password, self.new_inst1)
@@ -192,7 +192,7 @@ class SameSubnetSameComputePing(object):
                 time.sleep(5)
             except Exception as e:
                 print "Error:", e
-        '''
+        
         try:
             self.controller.deleteNetwork(
                 self.controller,
