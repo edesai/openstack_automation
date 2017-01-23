@@ -10,11 +10,14 @@ class RestartEnablerServer(object):
     '''
     classdocs
     '''
+
     def __init__(self, config_dict):
         '''
         Constructor
         '''
-        self.config_dict = config_dict 
-    
-    def runTest(self):   
-        return RestartService(self.config_dict).runTest(service="enabler-server") 
+        self.config_dict = config_dict
+
+    def runTest(self):
+        return RestartService(
+            self.config_dict).runTest(
+            service="enabler-server")

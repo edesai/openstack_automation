@@ -4,6 +4,7 @@ Created on Dec 12, 2016
 @author: edesai
 '''
 
+
 class MySqlDbTables(object):
     INSTANCES_INSTANCE_NAME = 1
     INSTANCES_INSTANCE_IP = 6

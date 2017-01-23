@@ -4,11 +4,11 @@ Created on Dec 20, 2016
 @author: edesai
 '''
 
+
 class Instance(object):
     '''
     classdocs
     '''
-
 
     def __init__(self, ip, instname, hostname):
         '''
@@ -17,4 +17,3 @@ class Instance(object):
         self.ip = ip
         self.instname = instname
         self.hostname = hostname
-        
