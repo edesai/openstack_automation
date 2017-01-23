@@ -139,7 +139,7 @@ class CheckFlowsOnComputeOnDelete(object):
                 new_project_user.tenant.id,
                 self.new_user,
                 self.new_password,
-                new_network_inst1.get('network').get('id'),
+                new_network_inst1.network.get('network').get('id'),
                 self.new_inst2,
                 key_name=keypair_secgrp.key_pair,
                 availability_zone=zone2)
