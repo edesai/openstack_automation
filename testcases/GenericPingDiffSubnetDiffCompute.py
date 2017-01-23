@@ -124,8 +124,8 @@ class GenericPingDiffSubnetDiffCompute(object):
                         self.new_user,
                         self.new_password,
                         agg_name=agg[host],
-                        availability_zone=zone[host]),
-                        host_list = hosts)
+                        availability_zone=zone[host],
+                        host_list = hosts))
                 #aggregate[host].add_host(hosts_list[host].hostname)
 
                 # Create instance
