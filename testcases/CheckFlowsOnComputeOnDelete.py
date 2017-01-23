@@ -130,7 +130,7 @@ class CheckFlowsOnComputeOnDelete(object):
                 self.new_password,
                 new_network_inst1.network.get('network').get('id'),
                 self.new_inst1,
-                key_name=keypair_secgrp.keypair,
+                key_name=keypair_secgrp.key_pair,
                 availability_zone=zone1)
             print "Host1:", host1
             del_inst = True
@@ -141,7 +141,7 @@ class CheckFlowsOnComputeOnDelete(object):
                 self.new_password,
                 new_network_inst1.get('network').get('id'),
                 self.new_inst2,
-                key_name=keypair_secgrp.keypair,
+                key_name=keypair_secgrp.key_pair,
                 availability_zone=zone2)
             print "Host2:", host2
 
@@ -229,6 +229,7 @@ class CheckFlowsOnComputeOnDelete(object):
                 hosts_list1 = []
                 hosts_list1.append(hosts_list[0])
                 self.controller.deleteAggregate(
+                    self.controller,
                     new_project_user.tenant.id,
                     self.new_user,
                     self.new_password,
@@ -243,6 +244,7 @@ class CheckFlowsOnComputeOnDelete(object):
                 hosts_list2 = []
                 hosts_list2.append(hosts_list[1])
                 self.controller.deleteAggregate(
+                    self.controller,
                     new_project_user.tenant.id,
                     self.new_user,
                     self.new_password,
