@@ -143,7 +143,7 @@ class CheckFlowsOnDelete(object):
                 self.controller.ip,
                 self.controller.sys_username,
                 self.controller.password,
-                host1.hostname)
+                host1[0].name)
             if result:
                 del_inst = False
                 raise Exception(
