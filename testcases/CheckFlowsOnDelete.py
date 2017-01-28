@@ -125,7 +125,8 @@ class CheckFlowsOnDelete(object):
                 self.new_password,
                 self.new_inst1)
             self.controller.deleteNetwork(
-                new_network_inst1.network.get('network').get('id'),
+                self.controller,
+                self.new_network1,
                 self.new_tenant,
                 self.new_user,
                 self.new_password)
