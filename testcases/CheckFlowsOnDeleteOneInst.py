@@ -138,7 +138,7 @@ class CheckFlowsOnDeleteOneInst(object):
                 self.new_inst1)
             del_inst = False
 
-            print "Waiting for flows to be deleted\n"
+            print "Waiting before checking the flows\n"
             time.sleep(20)  # wait for flows to be deleted
 
             # Verify Flows
@@ -154,7 +154,8 @@ class CheckFlowsOnDeleteOneInst(object):
                 raise Exception("Incorrect OVS flows")
 
         except Exception as e:
-            print "Error:", e
+            print "Exception:", e
+            return resultConstants.RESULT_ABORT
             if del_inst:
                 # Deleting instance and network
                 self.controller.deleteKeyPair(new_project_user.tenant.id,

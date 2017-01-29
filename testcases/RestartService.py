@@ -300,6 +300,7 @@ class RestartService(object):
 
         except Exception as e:
             print "Created Exception: ", e
+            return resultConstants.RESULT_ABORT
             self.cleanup()
             return ReturnValue.FAILURE
 
