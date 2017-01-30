@@ -103,7 +103,7 @@ class GenericPingDiffSubnetDiffCompute(object):
                 new_project_user.tenant.id, self.new_user, self.new_password)
 
             hosts_list = self.computeHosts
-            nw1_compute_count = math.floor(self.computeCount)
+            nw1_compute_count = math.floor(self.computeCount/2)
 
             # Put first half computes on nw1
             for host in range(int(nw1_compute_count)):
@@ -145,7 +145,7 @@ class GenericPingDiffSubnetDiffCompute(object):
 
             for host in range(
                 int(nw1_compute_count), int(
-                    self.computeCount - 1)):
+                    self.computeCount)):
                 hosts = []
                 # Create an aggregate with availability zone per compute/host
                 agg.append(
@@ -163,8 +163,8 @@ class GenericPingDiffSubnetDiffCompute(object):
                         self.new_user,
                         self.new_password,
                         agg_name=agg[host],
-                        availability_zone=zone[host]),
-                        host_list = hosts)
+                        availability_zone=zone[host],
+                        host_list = hosts))
                 #aggregate[host].add_host(hosts_list[host].hostname)
                 
                 # Create instance
@@ -199,7 +199,7 @@ class GenericPingDiffSubnetDiffCompute(object):
                 dhcp_ip2)
             if not result:
                 raise Exception("Ping failed...Failing test case\n")
-
+            
             for host in range(int(nw1_compute_count)):
                 # Verify Ping using DHCP namespace
                 result = pingObj.verify_ping_qdhcpns(
