@@ -61,7 +61,7 @@ class RestartService(object):
         self.new_subnw2 = "10.13.14.0/24"
         self.new_inst1 = self.new_tenant + "inst1"
         self.new_inst2 = self.new_tenant + "inst2"
-        self.num_inst = 5
+        self.num_inst = 2
         self.config_dict = config_dict
 
     def runTest(self, service):
