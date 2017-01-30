@@ -141,9 +141,16 @@ class CheckFlowsOnDeleteOneInst(object):
             print "Waiting before checking the flows\n"
             time.sleep(20)  # wait for flows to be deleted
 
-            # Verify Flows
-            vdptool_inst = OvsFlowsCli()
-            result = OvsFlowsCli.check_if_exists_in_both_br_flows(
+            # Verify if DB has the instance info (Expected : Not found)
+            mysql_db = MySqlConnection(self.config_dict)
+
+            with MySqlConnection(self.config_dict) as mysql_connection:
+                data = mysql_db.get_instances(mysql_connection, host1[0].name)
+            
+            if data is not None:
+                raise Exception("DB not cleared for the instance")    
+                '''
+                result = OvsFlowsCli.check_if_exists_in_both_br_flows(
                 vdptool_inst,
                 self.config_dict,
                 self.controller.ip,
@@ -151,7 +158,7 @@ class CheckFlowsOnDeleteOneInst(object):
                 self.controller.password,
                 host1[0].name)
             if not result:
-                raise Exception("Incorrect OVS flows")
+                raise Exception("Incorrect OVS flows")'''
 
         except Exception as e:
             print "Exception:", e
