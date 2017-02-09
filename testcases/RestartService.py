@@ -152,7 +152,7 @@ class RestartService(object):
             pingObj = Ping()
 
             dhcp_ip1 = self.new_subnw1[:-4] + "2"
-            '''result = pingObj.verify_ping_qdhcpns(
+            result = pingObj.verify_ping_qdhcpns(
                 self.controller.ip,
                 self.controller.sys_username,
                 self.controller.password,
@@ -160,10 +160,10 @@ class RestartService(object):
                 dhcp_ip1)
 
             if not result:
-                raise Exception("Ping failed...Failing test case\n")'''
+                raise Exception("Ping failed...Failing test case\n")
 
             dhcp_ip2 = self.new_subnw2[:-4] + "2"
-            '''result = pingObj.verify_ping_qdhcpns(
+            result = pingObj.verify_ping_qdhcpns(
                 self.controller.ip,
                 self.controller.sys_username,
                 self.controller.password,
@@ -171,7 +171,7 @@ class RestartService(object):
                 dhcp_ip2)
 
             if not result:
-                raise Exception("Ping failed...Failing test case\n")'''
+                raise Exception("Ping failed...Failing test case\n")
 
             inst_ip_list = []
 
@@ -225,7 +225,6 @@ class RestartService(object):
                     self.controller.password,
                     inst.instname,
                     inst.ip,
-                    inst.instname,
                     inst.hostname)
                 if not result:
                     raise Exception("Incorrect VDPTool/OVS output")
@@ -293,7 +292,7 @@ class RestartService(object):
                     self.controller.sys_username,
                     self.controller.password,
                     inst.instname,
-                    inst.ip,
+                    inst.ip, 
                     inst.hostname)
                 if not result:
                     raise Exception("Incorrect VDPTool/OVS output")
